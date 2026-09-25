@@ -8,7 +8,7 @@
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "tsx watch server/index.ts",
     "dev:client": "vite --config client/vite.config.ts client",
-    "build": "npm run db:generate && tsc -p server/tsconfig.json && vite build --config client/vite.config.ts client",
+    "build": "prisma generate && vite build --config client/vite.config.ts client",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma db push",

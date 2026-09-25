@@ -59,7 +59,11 @@ app.use((req, res) => {
 app.use(errorHandler);
 
 const PORT = config.port;
-app.listen(PORT, () => {
-  console.log(`🚀 TopKPI Backend Server running at http://localhost:${PORT}`);
-  console.log(`📡 Health check available at http://localhost:${PORT}/api/health`);
-});
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`🚀 TinyKPI Backend Server running at http://localhost:${PORT}`);
+    console.log(`📡 Health check available at http://localhost:${PORT}/api/health`);
+  });
+}
+
+export default app;
