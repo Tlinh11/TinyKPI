@@ -10,9 +10,12 @@ import {
   Workflow,
   Check,
   AlertCircle,
-  X
+  X,
+  Download
 } from 'lucide-react';
 import { apiClient } from '../api/client.js';
+import { exportToExcel } from '../utils/excel.js';
+import { ExcelImportModal } from '../components/common/ExcelImportModal.js';
 
 interface Process {
   id: string;
@@ -85,6 +88,44 @@ export const MasterProcessPage: React.FC = () => {
   const supportProcesses = processes.filter((p) => p.category === 'SUPPORT');
   const docProcesses = processes.filter((p) => p.category === 'DOCUMENT');
 
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+
+  const handleExportExcel = () => {
+    if (processes.length === 0) {
+      setNotification({ type: 'error', message: 'Không có dữ liệu quy trình để xuất Excel' });
+      return;
+    }
+
+    exportToExcel<Process>({
+      data: processes,
+      fileName: `Danh_Sach_Quy_Trinh_TinyKPI_${new Date().toISOString().split('T')[0]}.xlsx`,
+      sheetName: 'Quy trình',
+      columns: [
+        { header: 'STT', key: 'stt', width: 8 },
+        { header: 'Mã quy trình', key: 'code', width: 16 },
+        { header: 'Tên quy trình', key: 'title', width: 32 },
+        { header: 'Phân loại', key: 'category', width: 18, format: (c) => (c === 'CORE' ? 'Quy trình lõi' : c === 'SUPPORT' ? 'Quy trình hỗ trợ' : 'Biểu mẫu/Tài liệu') },
+        { header: 'Phiên bản', key: 'version', width: 12 },
+        { header: 'Bộ phận chủ trì', key: 'department', width: 25, format: (d) => d?.name || '' },
+        { header: 'Mô tả tóm tắt', key: 'description', width: 35 },
+      ],
+    });
+    setNotification({ type: 'success', message: `Đã xuất ${processes.length} quy trình ra file Excel (.xlsx) thành công!` });
+  };
+
+  const handleConfirmImport = async (rows: any[]) => {
+    const res = await apiClient<{ importedCount: number; errors: string[] }>('/master-processes/bulk', {
+      method: 'POST',
+      body: JSON.stringify(rows),
+    });
+    loadProcesses();
+    return {
+      success: true,
+      count: res.importedCount,
+      message: `Đã nhập thành công ${res.importedCount} quy trình vào hệ sinh thái TinyKPI!`,
+    };
+  };
+
   return (
     <div className="space-y-4">
       {/* Title & Action Controls matching screenshot */}
@@ -104,27 +145,24 @@ export const MasterProcessPage: React.FC = () => {
             <Search className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2" />
           </div>
 
-          {/* Filter dropdown */}
-          <select className="py-1.5 px-3 text-xs bg-white border border-slate-200 rounded-lg outline-none text-slate-600 shadow-xs">
-            <option>Lọc chức vụ</option>
-          </select>
-
-          {/* Table view toggle */}
+          {/* Export Excel */}
           <button
-            onClick={() => alert('Chế độ xem dạng bảng')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-medium hover:bg-slate-50 transition shadow-xs"
+            onClick={handleExportExcel}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-semibold hover:bg-slate-50 transition shadow-xs"
+            title="Xuất file Excel danh mục quy trình"
           >
-            <Table className="w-3.5 h-3.5 text-slate-500" />
-            <span>Xem dạng bảng</span>
+            <Download className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Xuất Excel</span>
           </button>
 
           {/* Import */}
           <button
-            onClick={() => alert('Import Excel / JSON nghiệp vụ TinyKPI')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-medium hover:bg-slate-50 transition shadow-xs"
+            onClick={() => setIsImportModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-semibold hover:bg-slate-50 transition shadow-xs"
+            title="Nhập quy trình từ file Excel"
           >
-            <Upload className="w-3.5 h-3.5 text-slate-500" />
-            <span>Import Excel / JSON</span>
+            <Upload className="w-3.5 h-3.5 text-blue-600" />
+            <span>Import Excel</span>
           </button>
 
           {/* Add Core Button */}
@@ -356,6 +394,70 @@ export const MasterProcessPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Excel Import Modal */}
+      <ExcelImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        title="Nhập danh mục Quy trình từ Excel"
+        templateFileName="Mau_Nhap_Quy_Trinh_TinyKPI.xlsx"
+        templateHeaders={[
+          'Mã quy trình',
+          'Tên quy trình',
+          'Phân loại',
+          'Bộ phận chủ trì',
+          'Thời gian SLA (giờ)',
+          'Mô tả'
+        ]}
+        exampleRows={[
+          {
+            'Mã quy trình': 'QT-001',
+            'Tên quy trình': 'Quy trình Tiếp nhận và Xử lý Đơn hàng',
+            'Phân loại': 'CORE',
+            'Bộ phận chủ trì': 'Khối Kinh Doanh & Tiếp Thị',
+            'Thời gian SLA (giờ)': 8,
+            'Mô tả': 'Tiếp nhận yêu cầu mua hàng từ khách hàng và chuyển giao kho'
+          },
+          {
+            'Mã quy trình': 'QT-002',
+            'Tên quy trình': 'Quy trình Tạm ứng và Hoàn ứng Công tác phí',
+            'Phân loại': 'SUPPORT',
+            'Bộ phận chủ trì': 'Phòng Tài Chính - Kế Toán',
+            'Thời gian SLA (giờ)': 24,
+            'Mô tả': 'Thẩm định hồ sơ công tác và giải ngân'
+          }
+        ]}
+        headerMapping={{
+          'Mã quy trình': 'code',
+          'Mã QT': 'code',
+          'Tên quy trình': 'title',
+          'Tên QT': 'title',
+          'Phân loại': 'category',
+          'Loại quy trình': 'category',
+          'Bộ phận chủ trì': 'departmentName',
+          'Phòng ban': 'departmentName',
+          'Bộ phận': 'departmentName',
+          'Thời gian SLA (giờ)': 'slaHours',
+          'SLA': 'slaHours',
+          'Mô tả': 'description'
+        }}
+        requiredFields={[
+          { key: 'title', label: 'Tên quy trình' }
+        ]}
+        previewColumns={[
+          { key: 'code', label: 'Mã QT' },
+          { key: 'title', label: 'Tên quy trình' },
+          { key: 'category', label: 'Phân loại' },
+          { key: 'departmentName', label: 'Bộ phận chủ trì' },
+          { key: 'slaHours', label: 'SLA (giờ)' }
+        ]}
+        notes={[
+          'Trường "Tên quy trình" là bắt buộc.',
+          'Phân loại có thể nhận: CORE (Quy trình lõi), SUPPORT (Quy trình hỗ trợ), DOCUMENT (Biểu mẫu/Tài liệu).',
+          'Nếu để trống SLA, hệ thống sẽ mặc định thời gian xử lý là 24 giờ.'
+        ]}
+        onConfirmImport={handleConfirmImport}
+      />
     </div>
   );
 };

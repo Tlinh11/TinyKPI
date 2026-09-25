@@ -9,10 +9,14 @@ import {
   Trash2,
   AlertCircle,
   Check,
-  Briefcase
+  Briefcase,
+  Download,
+  Upload
 } from 'lucide-react';
 import { apiClient } from '../api/client.js';
 import { Position } from '../types/index.js';
+import { exportToExcel } from '../utils/excel.js';
+import { ExcelImportModal } from '../components/common/ExcelImportModal.js';
 
 export const PositionsPage: React.FC = () => {
   const [positions, setPositions] = useState<Position[]>([]);
@@ -130,6 +134,42 @@ export const PositionsPage: React.FC = () => {
     (p.code && p.code.toLowerCase().includes(search.toLowerCase()))
   );
 
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+
+  const handleExportExcel = () => {
+    if (positions.length === 0) {
+      setNotification({ type: 'error', message: 'Không có dữ liệu chức vụ để xuất Excel' });
+      return;
+    }
+
+    exportToExcel<Position>({
+      data: positions,
+      fileName: `Danh_Sach_Chuc_Vu_TinyKPI_${new Date().toISOString().split('T')[0]}.xlsx`,
+      sheetName: 'Chức vụ',
+      columns: [
+        { header: 'STT', key: 'stt', width: 8 },
+        { header: 'Mã chức vụ', key: 'code', width: 16 },
+        { header: 'Tên chức danh / Chức vụ', key: 'name', width: 28 },
+        { header: 'Trạng thái', key: 'status', width: 16, format: (s) => (s === 'ACTIVE' ? 'Đang hoạt động' : 'Tạm dừng') },
+        { header: 'Mô tả', key: 'description', width: 35 },
+      ],
+    });
+    setNotification({ type: 'success', message: `Đã xuất ${positions.length} chức vụ ra file Excel (.xlsx) thành công!` });
+  };
+
+  const handleConfirmImport = async (rows: any[]) => {
+    const res = await apiClient<{ importedCount: number; errors: string[] }>('/positions/bulk', {
+      method: 'POST',
+      body: JSON.stringify(rows),
+    });
+    loadPositions();
+    return {
+      success: true,
+      count: res.importedCount,
+      message: `Đã nhập thành công ${res.importedCount} chức vụ vào hệ sinh thái TinyKPI!`,
+    };
+  };
+
   return (
     <div className="space-y-4">
       {/* Title & Action Bar matching TopKPI screenshot */}
@@ -158,15 +198,29 @@ export const PositionsPage: React.FC = () => {
           </button>
 
           <button
+            onClick={handleExportExcel}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-semibold hover:bg-slate-50 transition shadow-xs"
+            title="Xuất file Excel danh sách chức vụ"
+          >
+            <Download className="w-4 h-4 text-emerald-600" />
+            <span>Xuất Excel</span>
+          </button>
+
+          <button
+            onClick={() => setIsImportModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-semibold hover:bg-slate-50 transition shadow-xs"
+            title="Nhập danh sách chức vụ từ file Excel"
+          >
+            <Upload className="w-4 h-4 text-blue-600" />
+            <span>Nhập Excel</span>
+          </button>
+
+          <button
             onClick={handleOpenCreateModal}
             className="px-4 py-1.5 rounded-lg bg-[#1677ff] hover:bg-[#4096ff] text-white text-xs font-semibold shadow-xs transition flex items-center gap-1.5"
           >
             <Plus className="w-4 h-4" />
             <span>Thêm mới</span>
-          </button>
-
-          <button className="w-8 h-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center text-slate-600 hover:bg-slate-50 transition shadow-xs">
-            <MoreHorizontal className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -325,6 +379,59 @@ export const PositionsPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Excel Import Modal */}
+      <ExcelImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        title="Nhập danh sách Chức vụ từ Excel"
+        templateFileName="Mau_Nhap_Chuc_Vu_TinyKPI.xlsx"
+        templateHeaders={[
+          'Mã chức vụ',
+          'Tên chức danh / Chức vụ',
+          'Trạng thái',
+          'Mô tả'
+        ]}
+        exampleRows={[
+          {
+            'Mã chức vụ': 'CV-001',
+            'Tên chức danh / Chức vụ': 'Trưởng phòng Kinh doanh',
+            'Trạng thái': 'ACTIVE',
+            'Mô tả': 'Chịu trách nhiệm toàn diện doanh số và đội ngũ bán hàng'
+          },
+          {
+            'Mã chức vụ': 'CV-002',
+            'Tên chức danh / Chức vụ': 'Chuyên viên Phân tích Dữ liệu',
+            'Trạng thái': 'ACTIVE',
+            'Mô tả': 'Phân tích số liệu KPI, xây dựng mô hình dự báo'
+          }
+        ]}
+        headerMapping={{
+          'Mã chức vụ': 'code',
+          'Mã CV': 'code',
+          'Tên chức danh / Chức vụ': 'name',
+          'Tên chức vụ': 'name',
+          'Chức danh': 'name',
+          'Chức vụ': 'name',
+          'Trạng thái': 'status',
+          'Mô tả': 'description'
+        }}
+        requiredFields={[
+          { key: 'name', label: 'Tên chức danh / Chức vụ' }
+        ]}
+        previewColumns={[
+          { key: 'code', label: 'Mã CV' },
+          { key: 'name', label: 'Tên chức vụ' },
+          { key: 'status', label: 'Trạng thái' },
+          { key: 'description', label: 'Mô tả' }
+        ]}
+        notes={[
+          'Trường "Tên chức danh / Chức vụ" là bắt buộc.',
+          'Nếu để trống "Mã chức vụ", hệ thống sẽ tự động tạo mã định danh.',
+          'Trạng thái mặc định là "ACTIVE" (Đang hoạt động).'
+        ]}
+        onConfirmImport={handleConfirmImport}
+      />
     </div>
   );
 };

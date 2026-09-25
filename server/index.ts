@@ -47,6 +47,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/strategy-assessment', strategyRoutes);
 app.use('/api/bsc', bscRoutes);
 app.use('/api/processes', processRoutes);
+app.use('/api/master-processes', processRoutes);
 app.use('/api/sla', slaRoutes);
 app.use('/api/audit-logs', auditRoutes);
 app.use('/api/tasks', taskRoutes);

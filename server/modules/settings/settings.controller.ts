@@ -2,6 +2,7 @@ import { Response, NextFunction } from 'express';
 import { prisma } from '../../utils/prisma.js';
 import { sendSuccess, AppError } from '../../utils/response.js';
 import { AuthenticatedRequest } from '../../middleware/authGuard.js';
+import { aiKpiService } from './ai-kpi.service.js';
 
 export class SettingsController {
   // ==========================================
@@ -532,6 +533,93 @@ export class SettingsController {
       const id = req.params.id as string;
       await prisma.aiKpiRule.delete({ where: { id } });
       sendSuccess(res, null, 'Đã xóa quy tắc AI gợi ý');
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async generateAiKpis(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const result = await aiKpiService.generateKpis(req.body);
+      sendSuccess(res, result, 'Sinh bộ chỉ số KPI bằng AI thành công');
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async bulkSaveAiRules(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const { rules, industry, position } = req.body;
+      if (!Array.isArray(rules) || rules.length === 0) {
+        throw new AppError('Dữ liệu rules phải là mảng không rỗng', 400);
+      }
+      let createdCount = 0;
+      for (const r of rules) {
+        await prisma.aiKpiRule.create({
+          data: {
+            industry: String(r.industry || industry || 'GENERAL').toUpperCase(),
+            position: String(r.position || position || 'GENERAL').toUpperCase(),
+            perspective: String(r.perspective || 'INTERNAL_PROCESS').toUpperCase(),
+            suggestedKpi: r.name || r.suggestedKpi,
+            formula: r.formula || null,
+            unit: r.unit || '%',
+            weight: Number(r.weight) || 20,
+          },
+        });
+        createdCount++;
+      }
+      sendSuccess(res, { createdCount }, `Đã lưu ${createdCount} quy tắc KPI mới vào hệ thống`);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async applyAiKpisToScorecard(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const { kpis, objectiveId } = req.body;
+      if (!Array.isArray(kpis) || kpis.length === 0) {
+        throw new AppError('Danh sách KPI trống', 400);
+      }
+
+      let targetObjId = objectiveId;
+      if (!targetObjId) {
+        let defaultObj = await prisma.strategicObjective.findFirst();
+        if (!defaultObj) {
+          defaultObj = await prisma.strategicObjective.create({
+            data: {
+              title: 'Mục tiêu Chiến lược Tăng trưởng TinyKPI',
+              perspective: 'FINANCIAL',
+              description: 'Mục tiêu chiến lược tổng thể do AI khởi tạo',
+            },
+          });
+        }
+        targetObjId = defaultObj.id;
+      }
+
+      let insertedCount = 0;
+      for (const k of kpis) {
+        const code = k.code || `KPI-AI-${Math.floor(1000 + Math.random() * 9000)}`;
+        const existing = await prisma.kpiIndicator.findFirst({ where: { code } });
+        if (!existing) {
+          await prisma.kpiIndicator.create({
+            data: {
+              objectiveId: targetObjId,
+              code,
+              name: k.name,
+              definition: k.formula || k.rationale || null,
+              unit: k.unit || '%',
+              frequency: k.frequency || 'MONTHLY',
+              weight: Number(k.weight) || 20,
+              targetValue: Number(k.targetValue) || 100,
+              actualValue: 0,
+              achievementRate: 0,
+              status: 'IN_PROGRESS',
+            },
+          });
+          insertedCount++;
+        }
+      }
+      sendSuccess(res, { insertedCount }, `Đã gán thành công ${insertedCount} chỉ số KPI vào Thẻ điểm BSC`);
     } catch (err) {
       next(err);
     }

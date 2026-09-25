@@ -10,10 +10,14 @@ import {
   AlertCircle,
   Check,
   Building,
-  FolderTree
+  FolderTree,
+  Download,
+  Upload
 } from 'lucide-react';
 import { apiClient } from '../api/client.js';
 import { Department } from '../types/index.js';
+import { exportToExcel } from '../utils/excel.js';
+import { ExcelImportModal } from '../components/common/ExcelImportModal.js';
 
 export const DepartmentsPage: React.FC = () => {
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -143,6 +147,44 @@ export const DepartmentsPage: React.FC = () => {
     (d.code && d.code.toLowerCase().includes(search.toLowerCase()))
   );
 
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+
+  const handleExportExcel = () => {
+    if (departments.length === 0) {
+      setNotification({ type: 'error', message: 'Không có dữ liệu phòng ban để xuất Excel' });
+      return;
+    }
+
+    exportToExcel<Department>({
+      data: departments,
+      fileName: `Danh_Sach_Phong_Ban_TinyKPI_${new Date().toISOString().split('T')[0]}.xlsx`,
+      sheetName: 'Phòng ban',
+      columns: [
+        { header: 'STT', key: 'stt', width: 8 },
+        { header: 'Mã phòng ban', key: 'code', width: 16 },
+        { header: 'Tên bộ phận / Phòng ban', key: 'name', width: 28 },
+        { header: 'Viết tắt', key: 'abbreviation', width: 14 },
+        { header: 'Phân loại', key: 'type', width: 16, format: (t) => (t === 'COMPANY' ? 'Công ty' : t === 'SUBSIDIARY' ? 'Chi nhánh' : 'Phòng ban') },
+        { header: 'Thứ tự', key: 'order', width: 10 },
+        { header: 'Mô tả', key: 'description', width: 30 },
+      ],
+    });
+    setNotification({ type: 'success', message: `Đã xuất ${departments.length} bộ phận ra file Excel (.xlsx) thành công!` });
+  };
+
+  const handleConfirmImport = async (rows: any[]) => {
+    const res = await apiClient<{ importedCount: number; errors: string[] }>('/departments/bulk', {
+      method: 'POST',
+      body: JSON.stringify(rows),
+    });
+    loadDepartments();
+    return {
+      success: true,
+      count: res.importedCount,
+      message: `Đã nhập thành công ${res.importedCount} phòng ban vào hệ sinh thái TinyKPI!`,
+    };
+  };
+
   return (
     <div className="space-y-4">
       {/* Title & Action Bar matching TopKPI screenshot */}
@@ -171,22 +213,29 @@ export const DepartmentsPage: React.FC = () => {
           </button>
 
           <button
+            onClick={handleExportExcel}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-semibold hover:bg-slate-50 transition shadow-xs"
+            title="Xuất file Excel danh sách phòng ban"
+          >
+            <Download className="w-4 h-4 text-emerald-600" />
+            <span>Xuất Excel</span>
+          </button>
+
+          <button
+            onClick={() => setIsImportModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-semibold hover:bg-slate-50 transition shadow-xs"
+            title="Nhập danh sách phòng ban từ file Excel"
+          >
+            <Upload className="w-4 h-4 text-blue-600" />
+            <span>Nhập Excel</span>
+          </button>
+
+          <button
             onClick={() => handleOpenCreateModal()}
             className="px-4 py-1.5 rounded-lg bg-[#1677ff] hover:bg-[#4096ff] text-white text-xs font-semibold shadow-xs transition flex items-center gap-1.5"
           >
             <Plus className="w-4 h-4" />
             <span>Thêm mới</span>
-          </button>
-
-          <button
-            onClick={() => alert('Đang đồng bộ cơ cấu tổ chức với hệ thống')}
-            className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-semibold hover:bg-slate-50 transition shadow-xs"
-          >
-            Tái cơ cấu
-          </button>
-
-          <button className="w-8 h-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center text-slate-600 hover:bg-slate-50 transition shadow-xs">
-            <MoreHorizontal className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -406,6 +455,70 @@ export const DepartmentsPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Excel Import Modal */}
+      <ExcelImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        title="Nhập danh sách Phòng ban từ Excel"
+        templateFileName="Mau_Nhap_Phong_Ban_TinyKPI.xlsx"
+        templateHeaders={[
+          'Mã phòng ban',
+          'Tên bộ phận / Phòng ban',
+          'Viết tắt',
+          'Loại bộ phận',
+          'Thứ tự',
+          'Mô tả'
+        ]}
+        exampleRows={[
+          {
+            'Mã phòng ban': 'PB-001',
+            'Tên bộ phận / Phòng ban': 'Khối Kinh Doanh & Tiếp Thị',
+            'Viết tắt': 'KDTT',
+            'Loại bộ phận': 'DEPARTMENT',
+            'Thứ tự': 1,
+            'Mô tả': 'Quản lý phát triển khách hàng và thị trường'
+          },
+          {
+            'Mã phòng ban': 'PB-002',
+            'Tên bộ phận / Phòng ban': 'Phòng Tài Chính - Kế Toán',
+            'Viết tắt': 'TCKT',
+            'Loại bộ phận': 'DEPARTMENT',
+            'Thứ tự': 2,
+            'Mô tả': 'Quản lý thu chi và lập báo cáo tài chính'
+          }
+        ]}
+        headerMapping={{
+          'Mã phòng ban': 'code',
+          'Mã bộ phận': 'code',
+          'Mã PB': 'code',
+          'Tên bộ phận / Phòng ban': 'name',
+          'Tên bộ phận': 'name',
+          'Tên phòng ban': 'name',
+          'Viết tắt': 'abbreviation',
+          'Loại bộ phận': 'type',
+          'Loại': 'type',
+          'Thứ tự': 'order',
+          'Vị trí': 'order',
+          'Mô tả': 'description'
+        }}
+        requiredFields={[
+          { key: 'name', label: 'Tên bộ phận / Phòng ban' }
+        ]}
+        previewColumns={[
+          { key: 'code', label: 'Mã PB' },
+          { key: 'name', label: 'Tên bộ phận' },
+          { key: 'abbreviation', label: 'Viết tắt' },
+          { key: 'type', label: 'Loại' },
+          { key: 'order', label: 'Thứ tự' }
+        ]}
+        notes={[
+          'Trường "Tên bộ phận / Phòng ban" là bắt buộc.',
+          'Nếu để trống "Mã phòng ban", hệ thống sẽ tự động tạo mã định danh.',
+          'Loại bộ phận có thể nhận: COMPANY (Công ty), SUBSIDIARY (Chi nhánh), DEPARTMENT (Phòng ban).'
+        ]}
+        onConfirmImport={handleConfirmImport}
+      />
     </div>
   );
 };

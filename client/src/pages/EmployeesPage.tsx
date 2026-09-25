@@ -10,10 +10,15 @@ import {
   Inbox,
   AlertCircle,
   Check,
-  Calendar
+  Calendar,
+  Download,
+  Upload,
+  FileSpreadsheet
 } from 'lucide-react';
 import { apiClient } from '../api/client.js';
 import { Department, Position } from '../types/index.js';
+import { exportToExcel } from '../utils/excel.js';
+import { ExcelImportModal } from '../components/common/ExcelImportModal.js';
 
 interface Employee {
   id: string;
@@ -227,6 +232,50 @@ export const EmployeesPage: React.FC = () => {
     }
   };
 
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+
+  const handleExportExcel = () => {
+    if (employees.length === 0) {
+      setNotification({ type: 'error', message: 'Không có dữ liệu nhân sự để xuất Excel' });
+      return;
+    }
+
+    exportToExcel<Employee>({
+      data: employees,
+      fileName: `Danh_Sach_Nhan_Vien_TinyKPI_${new Date().toISOString().split('T')[0]}.xlsx`,
+      sheetName: 'Nhân sự',
+      columns: [
+        { header: 'STT', key: 'stt', width: 8 },
+        { header: 'Mã nhân viên', key: 'employeeCode', width: 16 },
+        { header: 'Họ và tên', key: 'fullName', width: 25 },
+        { header: 'Tên đăng nhập', key: 'username', width: 18 },
+        { header: 'Email', key: 'email', width: 28 },
+        { header: 'Số điện thoại', key: 'phone', width: 16 },
+        { header: 'Giới tính', key: 'gender', width: 12 },
+        { header: 'Chức danh / Chức vụ', key: 'position', width: 22, format: (p) => p?.name || '' },
+        { header: 'Bộ phận / Phòng ban', key: 'department', width: 24, format: (d) => d?.name || '' },
+        { header: 'Nhóm quyền', key: 'role', width: 16, format: (r) => r?.name || '' },
+        { header: 'Ngày vào làm', key: 'startDate', width: 16, format: (d) => (d ? new Date(d).toLocaleDateString('vi-VN') : '') },
+        { header: 'Ngày áp dụng KPI', key: 'kpiStartDate', width: 16, format: (d) => (d ? new Date(d).toLocaleDateString('vi-VN') : '') },
+        { header: 'Trạng thái', key: 'status', width: 16, format: (s) => (s === 'ACTIVE' ? 'Đang làm việc' : 'Đã nghỉ việc') },
+      ],
+    });
+    setNotification({ type: 'success', message: `Đã xuất ${employees.length} nhân sự ra file Excel (.xlsx) thành công!` });
+  };
+
+  const handleConfirmImport = async (rows: any[]) => {
+    const res = await apiClient<{ importedCount: number; errors: string[] }>('/users/bulk', {
+      method: 'POST',
+      body: JSON.stringify(rows),
+    });
+    loadEmployees();
+    return {
+      success: true,
+      count: res.importedCount,
+      message: `Đã nhập thành công ${res.importedCount} nhân sự vào hệ sinh thái TinyKPI!`,
+    };
+  };
+
   return (
     <div className="space-y-4">
       {/* Title & Action Bar matching TopKPI screenshot */}
@@ -243,17 +292,29 @@ export const EmployeesPage: React.FC = () => {
           </button>
 
           <button
+            onClick={handleExportExcel}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-semibold hover:bg-slate-50 transition shadow-xs"
+            title="Xuất file Excel danh sách nhân viên"
+          >
+            <Download className="w-4 h-4 text-emerald-600" />
+            <span>Xuất Excel</span>
+          </button>
+
+          <button
+            onClick={() => setIsImportModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-semibold hover:bg-slate-50 transition shadow-xs"
+            title="Nhập danh sách nhân sự từ file Excel"
+          >
+            <Upload className="w-4 h-4 text-blue-600" />
+            <span>Nhập Excel</span>
+          </button>
+
+          <button
             onClick={handleOpenCreateModal}
             className="px-4 py-1.5 rounded-lg bg-[#1677ff] hover:bg-[#4096ff] text-white text-xs font-semibold shadow-xs transition flex items-center gap-1.5"
           >
             <Plus className="w-4 h-4" />
             <span>Thêm mới</span>
-          </button>
-
-          <button
-            className="w-8 h-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center text-slate-600 hover:bg-slate-50 transition shadow-xs"
-          >
-            <MoreHorizontal className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -742,6 +803,95 @@ export const EmployeesPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Excel Import Modal */}
+      <ExcelImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        title="Nhập danh sách Nhân viên từ Excel"
+        templateFileName="Mau_Nhap_Nhan_Vien_TinyKPI.xlsx"
+        templateHeaders={[
+          'Mã NV',
+          'Họ và tên',
+          'Tên đăng nhập',
+          'Email',
+          'Số điện thoại',
+          'Giới tính',
+          'Chức vụ',
+          'Bộ phận',
+          'Nhóm quyền',
+          'Ngày làm việc',
+          'Ngày áp dụng KPI',
+          'Trạng thái'
+        ]}
+        exampleRows={[
+          {
+            'Mã NV': 'NV-001',
+            'Họ và tên': 'Nguyễn Văn An',
+            'Tên đăng nhập': 'an.nguyen',
+            'Email': 'an.nguyen@tinykpi.com',
+            'Số điện thoại': '0901234567',
+            'Giới tính': 'Nam',
+            'Chức vụ': 'Trưởng phòng Kinh doanh',
+            'Bộ phận': 'Khối Kinh Doanh & Tiếp Thị',
+            'Nhóm quyền': 'Manager',
+            'Ngày làm việc': '2025-01-15',
+            'Ngày áp dụng KPI': '2025-02-01',
+            'Trạng thái': 'Đang làm việc'
+          },
+          {
+            'Mã NV': 'NV-002',
+            'Họ và tên': 'Trần Thị Bích',
+            'Tên đăng nhập': 'bich.tran',
+            'Email': 'bich.tran@tinykpi.com',
+            'Số điện thoại': '0988765432',
+            'Giới tính': 'Nữ',
+            'Chức vụ': 'Chuyên viên Nhân sự',
+            'Bộ phận': 'Phòng Nhân sự & Đào tạo',
+            'Nhóm quyền': 'Staff',
+            'Ngày làm việc': '2025-03-01',
+            'Ngày áp dụng KPI': '2025-03-01',
+            'Trạng thái': 'Đang làm việc'
+          }
+        ]}
+        headerMapping={{
+          'Mã NV': 'employeeCode',
+          'Mã nhân viên': 'employeeCode',
+          'Họ và tên': 'fullName',
+          'Họ tên': 'fullName',
+          'Tên đăng nhập': 'username',
+          'Email': 'email',
+          'Số điện thoại': 'phone',
+          'SĐT': 'phone',
+          'Giới tính': 'gender',
+          'Chức vụ': 'positionName',
+          'Bộ phận': 'departmentName',
+          'Phòng ban': 'departmentName',
+          'Nhóm quyền': 'roleName',
+          'Ngày làm việc': 'startDate',
+          'Ngày áp dụng KPI': 'kpiStartDate',
+          'Trạng thái': 'status'
+        }}
+        requiredFields={[
+          { key: 'fullName', label: 'Họ và tên' }
+        ]}
+        previewColumns={[
+          { key: 'employeeCode', label: 'Mã NV' },
+          { key: 'fullName', label: 'Họ và tên' },
+          { key: 'username', label: 'Username' },
+          { key: 'email', label: 'Email' },
+          { key: 'positionName', label: 'Chức vụ' },
+          { key: 'departmentName', label: 'Bộ phận' },
+          { key: 'status', label: 'Trạng thái' }
+        ]}
+        notes={[
+          'Trường "Họ và tên" là bắt buộc.',
+          'Nếu để trống Email hoặc Username, hệ thống sẽ tự sinh tự động theo mã nhân viên.',
+          'Mật khẩu ban đầu mặc định của tất cả nhân sự tạo từ Excel là: 12345!',
+          'Tên phòng ban và chức vụ sẽ tự động đối soát với cơ sở dữ liệu hiện có.'
+        ]}
+        onConfirmImport={handleConfirmImport}
+      />
     </div>
   );
 };

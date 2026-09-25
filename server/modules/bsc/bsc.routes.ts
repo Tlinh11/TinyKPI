@@ -6,8 +6,12 @@ const router = Router();
 
 router.use(authGuard);
 
-// Strategy Map & Scorecard
+// Strategy Map & Scorecard & Cause-and-Effect Links
 router.get('/strategy-map', bscController.getStrategyMap);
+router.get('/strategy-map/links', bscController.getStrategyLinks);
+router.post('/strategy-map/links', requirePermission('bsc_strategy.manage'), bscController.saveStrategyLinks);
+router.post('/strategy-map/links/add', requirePermission('bsc_strategy.manage'), bscController.addStrategyLink);
+router.delete('/strategy-map/links/:id', requirePermission('bsc_strategy.manage'), bscController.deleteStrategyLink);
 
 // Strategic Objectives
 router.post('/objectives', requirePermission('bsc_strategy.manage'), bscController.createObjective);

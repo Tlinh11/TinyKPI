@@ -17,6 +17,49 @@ export class BscController {
     }
   };
 
+  getStrategyLinks = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await bscService.getStrategyLinks();
+      return sendSuccess(res, result);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  saveStrategyLinks = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user?.userId;
+      const userEmail = req.user?.email;
+      const result = await bscService.saveStrategyLinks(req.body.links || [], userId, userEmail);
+      return sendSuccess(res, result, 'Lưu liên kết bản đồ chiến lược thành công');
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  addStrategyLink = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user?.userId;
+      const userEmail = req.user?.email;
+      const result = await bscService.addStrategyLink(req.body, userId, userEmail);
+      return sendSuccess(res, result, 'Thêm liên kết nhân - quả thành công', 201);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  deleteStrategyLink = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      const id = req.params.id as string;
+      const userId = req.user?.userId;
+      const userEmail = req.user?.email;
+      const result = await bscService.deleteStrategyLink(id, userId, userEmail);
+      return sendSuccess(res, result, 'Đã xóa liên kết nhân - quả');
+    } catch (err) {
+      next(err);
+    }
+  };
+
   createObjective = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const userId = req.user?.userId;

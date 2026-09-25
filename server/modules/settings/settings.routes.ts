@@ -29,9 +29,12 @@ router.post('/forms', settingsController.createForm);
 router.put('/forms/:id', settingsController.updateForm);
 router.delete('/forms/:id', settingsController.deleteForm);
 
-// 5. AI KPI Rules
+// 5. AI KPI Rules & AI Generator
 router.get('/ai-rules', settingsController.getAiRules);
 router.post('/ai-rules', settingsController.createAiRule);
+router.post('/ai-rules/generate', settingsController.generateAiKpis);
+router.post('/ai-rules/bulk-save', settingsController.bulkSaveAiRules);
+router.post('/ai-rules/apply-to-kpis', settingsController.applyAiKpisToScorecard);
 router.delete('/ai-rules/:id', settingsController.deleteAiRule);
 
 // 6. System & Email Settings

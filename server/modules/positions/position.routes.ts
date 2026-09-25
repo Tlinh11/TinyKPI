@@ -7,6 +7,7 @@ const router = Router();
 router.use(authGuard);
 
 router.get('/', positionController.getPositions);
+router.post('/bulk', requirePermission('positions.manage'), positionController.bulkCreatePositions);
 router.get('/:id', positionController.getPositionById);
 router.post('/', requirePermission('positions.manage'), positionController.createPosition);
 router.put('/:id', requirePermission('positions.manage'), positionController.updatePosition);

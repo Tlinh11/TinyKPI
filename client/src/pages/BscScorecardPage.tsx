@@ -14,10 +14,12 @@ import {
   Sparkles,
   Check,
   AlertCircle,
-  FileText
+  FileText,
+  Download
 } from 'lucide-react';
 import { apiClient } from '../api/client.js';
 import { Department } from '../types/index.js';
+import { exportToExcel } from '../utils/excel.js';
 
 interface KpiIndicator {
   id: string;
@@ -329,6 +331,81 @@ export const BscScorecardPage: React.FC<BscScorecardPageProps> = ({ onNavigate }
     }
   };
 
+  const handleExportExcel = () => {
+    if (!data || !data.perspectives) {
+      setNotification({ type: 'error', message: 'Chưa có dữ liệu thẻ điểm để xuất Excel' });
+      return;
+    }
+
+    const flatRows: any[] = [];
+    let counter = 1;
+
+    data.perspectives.forEach((persp) => {
+      persp.objectives.forEach((obj) => {
+        if (!obj.kpiIndicators || obj.kpiIndicators.length === 0) {
+          flatRows.push({
+            stt: counter++,
+            perspective: persp.title,
+            objective: obj.title,
+            kpiCode: '',
+            kpiName: '(Chưa gắn KPI)',
+            unit: '',
+            frequency: '',
+            weight: '0%',
+            targetValue: 0,
+            actualValue: 0,
+            achievementRate: '0%',
+            status: 'Chưa có dữ liệu'
+          });
+        } else {
+          obj.kpiIndicators.forEach((kpi) => {
+            flatRows.push({
+              stt: counter++,
+              perspective: persp.title,
+              objective: obj.title,
+              kpiCode: kpi.code,
+              kpiName: kpi.name,
+              unit: kpi.unit,
+              frequency: kpi.frequency === 'MONTHLY' ? 'Tháng' : kpi.frequency === 'QUARTERLY' ? 'Quý' : 'Năm',
+              weight: `${kpi.weight}%`,
+              targetValue: kpi.targetValue,
+              actualValue: kpi.actualValue,
+              achievementRate: `${kpi.achievementRate}%`,
+              status: kpi.achievementRate >= 100 ? 'Đạt mục tiêu' : kpi.achievementRate >= 80 ? 'Cần cải thiện' : 'Chưa đạt'
+            });
+          });
+        }
+      });
+    });
+
+    if (flatRows.length === 0) {
+      setNotification({ type: 'error', message: 'Không có dữ liệu KPI để xuất' });
+      return;
+    }
+
+    exportToExcel({
+      data: flatRows,
+      fileName: `The_Diem_BSC_TinyKPI_${new Date().toISOString().split('T')[0]}.xlsx`,
+      sheetName: 'Thẻ điểm BSC',
+      columns: [
+        { header: 'STT', key: 'stt', width: 8 },
+        { header: 'Viễn cảnh BSC', key: 'perspective', width: 26 },
+        { header: 'Mục tiêu chiến lược', key: 'objective', width: 32 },
+        { header: 'Mã KPI', key: 'kpiCode', width: 14 },
+        { header: 'Tên chỉ số KPI', key: 'kpiName', width: 32 },
+        { header: 'ĐVT', key: 'unit', width: 10 },
+        { header: 'Tần suất', key: 'frequency', width: 12 },
+        { header: 'Trọng số', key: 'weight', width: 12 },
+        { header: 'Chỉ tiêu Kế hoạch', key: 'targetValue', width: 18 },
+        { header: 'Thực hiện', key: 'actualValue', width: 16 },
+        { header: 'Tỷ lệ hoàn thành', key: 'achievementRate', width: 18 },
+        { header: 'Đánh giá trạng thái', key: 'status', width: 20 },
+      ],
+    });
+
+    setNotification({ type: 'success', message: `Đã xuất ${flatRows.length} chỉ số KPI trong Thẻ điểm BSC ra file Excel (.xlsx) thành công!` });
+  };
+
   return (
     <div className="space-y-4">
       {/* Top Header Row */}
@@ -388,6 +465,15 @@ export const BscScorecardPage: React.FC<BscScorecardPageProps> = ({ onNavigate }
             title="Làm mới"
           >
             <RotateCw className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={handleExportExcel}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-semibold hover:bg-slate-50 transition shadow-xs"
+            title="Xuất Thẻ điểm BSC ra file Excel"
+          >
+            <Download className="w-4 h-4 text-emerald-600" />
+            <span>Xuất Excel</span>
           </button>
 
           {activeTab === 'scorecard' ? (

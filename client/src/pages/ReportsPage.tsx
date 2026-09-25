@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   AlertTriangle,
 } from 'lucide-react';
+import { exportToExcel } from '../utils/excel.js';
 
 export const ReportsPage: React.FC<{ onNavigate?: (path: string) => void }> = ({ onNavigate }) => {
   const [period, setPeriod] = useState('Q3-2026');
@@ -65,24 +66,22 @@ export const ReportsPage: React.FC<{ onNavigate?: (path: string) => void }> = ({
     },
   ];
 
-  const handleExportCSV = () => {
-    const csvContent =
-      'data:text/csv;charset=utf-8,' +
-      ['Mã KPI,Tên chỉ số,Phòng ban,Kế hoạch,Thực hiện,Độ lệch']
-        .concat(
-          reportData.map(
-            (r) => `"${r.code}","${r.title}","${r.department}","${r.target}","${r.actual}","${r.variance}"`
-          )
-        )
-        .join('\n');
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Bao_Cao_Hieu_Suat_TinyKPI_${period}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleExportExcel = () => {
+    exportToExcel({
+      data: reportData,
+      fileName: `Bao_Cao_Hieu_Suat_TinyKPI_${period}.xlsx`,
+      sheetName: `Báo cáo ${period}`,
+      columns: [
+        { header: 'STT', key: 'stt', width: 8 },
+        { header: 'Mã KPI', key: 'code', width: 16 },
+        { header: 'Tên chỉ số KPI', key: 'title', width: 38 },
+        { header: 'Phòng ban phụ trách', key: 'department', width: 26 },
+        { header: 'Chỉ tiêu Kế hoạch', key: 'target', width: 18 },
+        { header: 'Thực hiện', key: 'actual', width: 18 },
+        { header: 'Độ lệch (+/-)', key: 'variance', width: 16 },
+        { header: 'Trạng thái', key: 'status', width: 16, format: (s) => (s === 'SURPASSED' ? 'Vượt chỉ tiêu' : 'Cần cải thiện') },
+      ],
+    });
   };
 
   return (
@@ -110,11 +109,11 @@ export const ReportsPage: React.FC<{ onNavigate?: (path: string) => void }> = ({
           </button>
 
           <button
-            onClick={handleExportCSV}
+            onClick={handleExportExcel}
             className="flex items-center gap-1.5 px-4 py-2 bg-[#1677ff] hover:bg-[#4096ff] text-white text-xs font-semibold rounded-lg shadow-sm hover:shadow transition"
           >
             <Download className="w-3.5 h-3.5" />
-            <span>Xuất file Excel / CSV</span>
+            <span>Xuất file Excel (.xlsx)</span>
           </button>
         </div>
       </div>

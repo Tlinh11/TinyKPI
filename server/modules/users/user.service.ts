@@ -138,6 +138,130 @@ export class UserService {
 
     return deleted;
   }
+
+  async bulkCreateUsers(rows: any[], authorId?: string, authorEmail?: string) {
+    const departments = await prisma.department.findMany({ select: { id: true, name: true, code: true } });
+    const positions = await prisma.position.findMany({ select: { id: true, name: true, code: true } });
+    const roles = await prisma.role.findMany({ select: { id: true, name: true } });
+    const defaultRole = roles.find((r) => r.name === 'Staff') || roles[0];
+
+    const defaultPasswordHash = await bcrypt.hash('12345!', 10);
+
+    let importedCount = 0;
+    const errors: string[] = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      try {
+        const fullName = String(row.fullName || row.name || '').trim();
+        if (!fullName) {
+          errors.push(`Dòng ${i + 1}: Thiếu Họ và tên.`);
+          continue;
+        }
+
+        const employeeCode = String(row.employeeCode || row.code || `NV-${Math.floor(1000 + Math.random() * 9000)}`).trim();
+        let email = String(row.email || '').trim().toLowerCase();
+        let username = String(row.username || '').trim().toLowerCase();
+
+        if (!email) {
+          const cleanName = fullName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+          email = `${cleanName}.${employeeCode.toLowerCase()}@tinykpi.com`;
+        }
+        if (!username) {
+          username = email.split('@')[0];
+        }
+
+        const existing = await prisma.user.findFirst({
+          where: { OR: [{ email }, { username }] },
+        });
+
+        // Find department
+        let departmentId: string | null = null;
+        if (row.departmentId) {
+          departmentId = row.departmentId;
+        } else if (row.department || row.departmentName) {
+          const deptQuery = String(row.department || row.departmentName).trim().toLowerCase();
+          const foundDept = departments.find(
+            (d) => d.name.toLowerCase() === deptQuery || (d.code && d.code.toLowerCase() === deptQuery)
+          );
+          if (foundDept) departmentId = foundDept.id;
+        }
+
+        // Find position
+        let positionId: string | null = null;
+        if (row.positionId) {
+          positionId = row.positionId;
+        } else if (row.position || row.positionName) {
+          const posQuery = String(row.position || row.positionName).trim().toLowerCase();
+          const foundPos = positions.find(
+            (p) => p.name.toLowerCase() === posQuery || (p.code && p.code.toLowerCase() === posQuery)
+          );
+          if (foundPos) positionId = foundPos.id;
+        }
+
+        // Find role
+        let roleId = defaultRole ? defaultRole.id : undefined;
+        if (row.roleId) {
+          roleId = row.roleId;
+        } else if (row.role || row.roleName) {
+          const roleQuery = String(row.role || row.roleName).trim().toLowerCase();
+          const foundRole = roles.find((r) => r.name.toLowerCase() === roleQuery);
+          if (foundRole) roleId = foundRole.id;
+        }
+
+        const data: any = {
+          fullName,
+          employeeCode,
+          email,
+          username,
+          phone: row.phone ? String(row.phone).trim() : null,
+          gender: row.gender ? String(row.gender).trim() : 'Nam',
+          status: row.status === 'Đã nghỉ việc' || row.status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE',
+          departmentId,
+          positionId,
+          roleId: roleId!,
+          passwordHash: defaultPasswordHash,
+          startDate: row.startDate ? new Date(row.startDate) : new Date(),
+          kpiStartDate: row.kpiStartDate ? new Date(row.kpiStartDate) : new Date(),
+        };
+
+        if (existing) {
+          await prisma.user.update({
+            where: { id: existing.id },
+            data: {
+              fullName: data.fullName,
+              phone: data.phone,
+              gender: data.gender,
+              status: data.status,
+              departmentId: data.departmentId || existing.departmentId,
+              positionId: data.positionId || existing.positionId,
+            },
+          });
+        } else {
+          await prisma.user.create({ data });
+        }
+        importedCount++;
+      } catch (err: any) {
+        errors.push(`Dòng ${i + 1}: ${err.message || 'Lỗi không xác định'}`);
+      }
+    }
+
+    if (authorId) {
+      await prisma.auditLog.create({
+        data: {
+          userId: authorId,
+          userEmail: authorEmail,
+          action: 'BULK_IMPORT',
+          entity: 'User',
+          entityId: 'BULK',
+          newValue: JSON.stringify({ importedCount, total: rows.length }),
+        },
+      });
+    }
+
+    return { importedCount, total: rows.length, errors };
+  }
 }
 
 export const userService = new UserService();
+

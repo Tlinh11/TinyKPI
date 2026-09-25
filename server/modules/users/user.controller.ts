@@ -66,6 +66,22 @@ export class UserController {
       next(err);
     }
   };
+
+  bulkCreateUsers = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      const items = Array.isArray(req.body) ? req.body : req.body.items;
+      if (!Array.isArray(items)) {
+        return res.status(400).json({ success: false, message: 'Dữ liệu không đúng định dạng mảng (array)' });
+      }
+      const authorId = req.user?.userId;
+      const authorEmail = req.user?.email;
+      const result = await userService.bulkCreateUsers(items, authorId, authorEmail);
+      return sendSuccess(res, result, `Đã nhập thành công ${result.importedCount}/${items.length} nhân sự`);
+    } catch (err) {
+      next(err);
+    }
+  };
 }
 
 export const userController = new UserController();
+

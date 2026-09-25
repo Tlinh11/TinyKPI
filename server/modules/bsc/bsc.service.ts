@@ -37,6 +37,8 @@ export class BscService {
       ? Number((allIndicators.reduce((acc, k) => acc + (k.achievementRate || 0), 0) / allIndicators.length).toFixed(1))
       : 0;
 
+    const links = await this.getStrategyLinks();
+
     return {
       organization,
       stage,
@@ -44,7 +46,108 @@ export class BscService {
       totalObjectives: objectives.length,
       totalKpis: allIndicators.length,
       perspectives: map,
+      links,
     };
+  }
+
+  async getStrategyLinks() {
+    const setting = await prisma.systemSetting.findUnique({
+      where: { key: 'bsc_strategy_map_links' }
+    });
+    if (setting && setting.value) {
+      try {
+        return JSON.parse(setting.value);
+      } catch {
+        return [];
+      }
+    }
+
+    // Default seeded links between objectives across 4 BSC layers
+    return [
+      {
+        id: 'link-pt-qt',
+        sourceId: 'obj-learn-01',
+        targetId: 'obj-proc-01',
+        label: 'Thúc đẩy số hóa & SLA',
+        type: 'ENABLES'
+      },
+      {
+        id: 'link-qt-kh',
+        sourceId: 'obj-proc-01',
+        targetId: 'obj-cust-01',
+        label: 'Nâng cao trải nghiệm KH',
+        type: 'DRIVES'
+      },
+      {
+        id: 'link-kh-tc',
+        sourceId: 'obj-cust-01',
+        targetId: 'obj-fin-01',
+        label: 'Gia tăng doanh thu & lợi nhuận',
+        type: 'DRIVES'
+      }
+    ];
+  }
+
+  async saveStrategyLinks(links: any[], userId?: string, userEmail?: string) {
+    await prisma.systemSetting.upsert({
+      where: { key: 'bsc_strategy_map_links' },
+      update: { value: JSON.stringify(links) },
+      create: {
+        key: 'bsc_strategy_map_links',
+        value: JSON.stringify(links),
+        group: 'GENERAL'
+      }
+    });
+
+    if (userId) {
+      await prisma.auditLog.create({
+        data: {
+          userId,
+          userEmail,
+          action: 'UPDATE',
+          entity: 'StrategyMapLinks',
+          entityId: 'bsc_strategy_map_links',
+          newValue: JSON.stringify({ count: links.length })
+        }
+      });
+    }
+
+    return links;
+  }
+
+  async addStrategyLink(data: { sourceId: string; targetId: string; label?: string; type?: string }, userId?: string, userEmail?: string) {
+    if (!data.sourceId || !data.targetId) {
+      throw new AppError('Cần chọn mục tiêu nguồn và mục tiêu đích', 400, 'INVALID_LINK');
+    }
+    if (data.sourceId === data.targetId) {
+      throw new AppError('Mục tiêu nguồn và đích không thể trùng nhau', 400, 'SELF_LINK');
+    }
+
+    const current = await this.getStrategyLinks();
+    const existing = current.find((l: any) => l.sourceId === data.sourceId && l.targetId === data.targetId);
+    if (existing) {
+      throw new AppError('Liên kết nhân - quả giữa hai mục tiêu này đã tồn tại', 400, 'DUPLICATE_LINK');
+    }
+
+    const newLink = {
+      id: `link-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      sourceId: data.sourceId,
+      targetId: data.targetId,
+      label: data.label || 'Thúc đẩy',
+      type: data.type || 'DRIVES',
+      createdAt: new Date().toISOString()
+    };
+
+    const updated = [...current, newLink];
+    await this.saveStrategyLinks(updated, userId, userEmail);
+    return newLink;
+  }
+
+  async deleteStrategyLink(linkId: string, userId?: string, userEmail?: string) {
+    const current = await this.getStrategyLinks();
+    const filtered = current.filter((l: any) => l.id !== linkId);
+    await this.saveStrategyLinks(filtered, userId, userEmail);
+    return filtered;
   }
 
   async createObjective(data: any, userId?: string, userEmail?: string) {
@@ -101,6 +204,16 @@ export class BscService {
     }
 
     const deleted = await this.repo.deleteObjective(id);
+
+    try {
+      const currentLinks = await this.getStrategyLinks();
+      const filteredLinks = currentLinks.filter((l: any) => l.sourceId !== id && l.targetId !== id);
+      if (filteredLinks.length !== currentLinks.length) {
+        await this.saveStrategyLinks(filteredLinks, userId, userEmail);
+      }
+    } catch (e) {
+      console.warn('Could not clean up links for deleted objective:', e);
+    }
 
     await prisma.auditLog.create({
       data: {

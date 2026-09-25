@@ -7,6 +7,7 @@ const router = Router();
 router.use(authGuard);
 
 router.get('/', departmentController.getDepartments);
+router.post('/bulk', requirePermission('departments.manage'), departmentController.bulkCreateDepartments);
 router.get('/:id', departmentController.getDepartmentById);
 router.post('/', requirePermission('departments.manage'), departmentController.createDepartment);
 router.put('/:id', requirePermission('departments.manage'), departmentController.updateDepartment);

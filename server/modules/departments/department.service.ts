@@ -107,6 +107,70 @@ export class DepartmentService {
 
     return deleted;
   }
+
+  async bulkCreateDepartments(rows: any[], userId?: string, userEmail?: string) {
+    let importedCount = 0;
+    const errors: string[] = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      try {
+        const name = String(row.name || row.departmentName || '').trim();
+        if (!name) {
+          errors.push(`Dòng ${i + 1}: Thiếu tên phòng ban`);
+          continue;
+        }
+
+        const code = row.code ? String(row.code).trim() : `PB-${Math.floor(100 + Math.random() * 900)}`;
+
+        const existing = await prisma.department.findFirst({
+          where: { OR: [{ name }, { code }] },
+        });
+
+        if (existing) {
+          await prisma.department.update({
+            where: { id: existing.id },
+            data: {
+              name,
+              abbreviation: row.abbreviation ? String(row.abbreviation).trim() : existing.abbreviation,
+              type: row.type || existing.type,
+              description: row.description || existing.description,
+            },
+          });
+        } else {
+          await prisma.department.create({
+            data: {
+              name,
+              code,
+              abbreviation: row.abbreviation ? String(row.abbreviation).trim() : null,
+              type: row.type || 'DEPARTMENT',
+              order: row.order ? Number(row.order) : 1,
+              description: row.description ? String(row.description).trim() : null,
+            },
+          });
+        }
+        importedCount++;
+      } catch (err: any) {
+        errors.push(`Dòng ${i + 1}: ${err.message || 'Lỗi không xác định'}`);
+      }
+    }
+
+    if (userId) {
+      await prisma.auditLog.create({
+        data: {
+          userId,
+          userEmail,
+          action: 'BULK_IMPORT',
+          entity: 'Department',
+          entityId: 'BULK',
+          newValue: JSON.stringify({ importedCount, total: rows.length }),
+        },
+      });
+    }
+
+    return { importedCount, total: rows.length, errors };
+  }
 }
 
 export const departmentService = new DepartmentService();
+
