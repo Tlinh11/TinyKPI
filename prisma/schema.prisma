@@ -1,0 +1,286 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Role {
+  id              String           @id @default(cuid())
+  name            String           @unique
+  description     String?
+  users           User[]
+  rolePermissions RolePermission[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@map("roles")
+}
+
+model Permission {
+  id              String           @id @default(cuid())
+  name            String           @unique
+  module          String
+  description     String?
+  rolePermissions RolePermission[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model Department {
+  id                  String               @id @default(cuid())
+  name                String
+  code                String?              @unique
+  syncId              String?
+  abbreviation        String?
+  parentId            String?
+  parent              Department?          @relation("DepartmentHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children            Department[]         @relation("DepartmentHierarchy")
+  type                String               @default("DEPARTMENT") // COMPANY, SUBSIDIARY, DEPARTMENT
+  order               Int                  @default(1)
+  description         String?
+  users               User[]
+  employeeAssignments EmployeeAssignment[]
+  masterProcesses     MasterProcess[]
+  kpiIndicators       KpiIndicator[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  @@map("departments")
+}
+
+model Position {
+  id          String   @id @default(cuid())
+  name        String
+  code        String?  @unique
+  syncId      String?
+  description String?
+  status      String   @default("ACTIVE") // ACTIVE, INACTIVE
+  users       User[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("positions")
+}
+
+model User {
+  id                  String               @id @default(cuid())
+  email               String               @unique
+  username            String               @unique
+  passwordHash        String
+  fullName            String
+  employeeCode        String?
+  abbreviation        String?
+  gender              String?              @default("Nam")
+  phone               String?
+  avatar              String?
+  roleId              String
+  role                Role                 @relation(fields: [roleId], references: [id])
+  departmentId        String?
+  department          Department?          @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  positionId          String?
+  position            Position?            @relation(fields: [positionId], references: [id], onDelete: SetNull)
+  kpiStartDate        DateTime?
+  startDate           DateTime?
+  subsystem           String?              @default("BSC")
+  status              String               @default("ACTIVE") // ACTIVE, INACTIVE, LEAVE
+  language            String               @default("Tiếng Việt")
+  description         String?
+  employeeAssignments EmployeeAssignment[]
+  assignedKpis        KpiIndicator[]
+  auditLogs           AuditLog[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  @@map("users")
+}
+
+model EmployeeAssignment {
+  id           String      @id @default(cuid())
+  userId       String
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  departmentId String
+  department   Department  @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  roleName     String?
+  kpiStartDate DateTime?
+  endDate      DateTime?
+  createdAt    DateTime    @default(now())
+
+  @@map("employee_assignments")
+}
+
+model StrategyAssessment {
+  id                     String   @id @default(cuid())
+  organization           String   @default("Công ty")
+  stage                  String   @default("Giai đoạn 1")
+  vision                 String?
+  companyStrengths       String?  // JSON string
+  competitorStrengths    String?  // JSON string
+  industrySuccessFactors String?  // JSON string
+  competitors            String?  // JSON string
+  competitiveAdvantage   String?  // JSON string
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@unique([organization, stage])
+  @@map("strategy_assessments")
+}
+
+model SwotItem {
+  id           String   @id @default(cuid())
+  organization String   @default("Công ty")
+  stage        String   @default("Giai đoạn 1")
+  type         String   // STRENGTH, WEAKNESS, OPPORTUNITY, THREAT
+  content      String
+  order        Int      @default(1)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("swot_items")
+}
+
+model StrategyMatrixItem {
+  id           String   @id @default(cuid())
+  organization String   @default("Công ty")
+  stage        String   @default("Giai đoạn 1")
+  type         String   // SO, WO, ST, WT
+  title        String
+  description  String?
+  isSelected   Boolean  @default(false)
+  order        Int      @default(1)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("strategy_matrix_items")
+}
+
+model StrategicObjective {
+  id            String         @id @default(cuid())
+  organization  String         @default("Công ty")
+  stage         String         @default("Giai đoạn 1")
+  perspective   String         // FINANCIAL, CUSTOMER, INTERNAL_PROCESS, LEARNING_GROWTH
+  code          String?
+  title         String
+  description   String?
+  order         Int            @default(1)
+  kpiIndicators KpiIndicator[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@map("strategic_objectives")
+}
+
+model KpiIndicator {
+  id              String             @id @default(cuid())
+  objectiveId     String
+  objective       StrategicObjective @relation(fields: [objectiveId], references: [id], onDelete: Cascade)
+  code            String             @unique
+  name            String
+  definition      String?            // Định nghĩa / Công thức đo
+  kpiType         String?            @default("CORE") // CORE (Cốt lõi), SUPPORT (Hỗ trợ), FUNCTIONAL (Chức năng)
+  unit            String             @default("%") // %, VNĐ, Triệu VNĐ, Điểm, Ngày, Lần...
+  frequency       String             @default("MONTHLY") // MONTHLY, QUARTERLY, YEARLY
+  weight          Float              @default(20) // Trọng số %
+  minTarget       Float?             // Ngưỡng Min
+  thresholdValue  Float?             // Ngưỡng chấp nhận
+  targetValue     Float              // Chỉ tiêu / Kế hoạch
+  maxTarget       Float?             // Ngưỡng Max / Thách thức
+  stretchValue    Float?             // Thách thức
+  actualValue     Float?             @default(0) // Thực hiện
+  achievementRate Float?             @default(0) // Tỷ lệ hoàn thành %
+  departmentId    String?
+  department      Department?        @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  assignedToId    String?
+  assignedTo      User?              @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
+  status          String             @default("IN_PROGRESS") // ACHIEVED, WARNING, FAILED, IN_PROGRESS
+  note            String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@map("kpi_indicators")
+}
+
+model BscReport {
+  id          String   @id @default(cuid())
+  name        String
+  period      String
+  frequency   String   @default("MONTHLY") // MONTHLY, QUARTERLY, YEARLY
+  score       Float?   @default(0)
+  authorId    String?
+  status      String   @default("PUBLISHED")
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("bsc_reports")
+}
+
+model MasterProcess {
+  id           String      @id @default(cuid())
+  title        String
+  category     String      // CORE (Quy trình lõi), SUPPORT (Quy trình hỗ trợ), DOCUMENT (Văn bản)
+  code         String?
+  version      String?     @default("1.0")
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  description  String?
+  status       String      @default("ACTIVE")
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@map("master_processes")
+}
+
+model SlaGroup {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  items       SlaItem[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("sla_groups")
+}
+
+model SlaItem {
+  id            String   @id @default(cuid())
+  groupId       String
+  group         SlaGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  taskType      String
+  durationHours Float    @default(24)
+  status        String   @default("ACTIVE")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("sla_items")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userEmail String?
+  action    String   // LOGIN, LOGOUT, CREATE, UPDATE, DELETE
+  entity    String   // User, Department, Position, Strategy, SLA, Process
+  entityId  String?
+  oldValue  String?  // JSON text
+  newValue  String?  // JSON text
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@map("audit_logs")
+}
