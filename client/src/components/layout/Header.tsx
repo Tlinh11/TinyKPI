@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Users, Bell, Grid, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.js';
 import { NotificationDropdown } from './NotificationDropdown.js';
@@ -23,6 +23,24 @@ export const Header: React.FC<HeaderProps> = ({
   const [showAppLauncher, setShowAppLauncher] = useState(false);
   const [isTicketDrawerOpen, setIsTicketDrawerOpen] = useState(false);
 
+  const orgRef = useRef<HTMLDivElement>(null);
+  const appLauncherRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (orgRef.current && !orgRef.current.contains(event.target as Node)) {
+        setShowOrgDropdown(false);
+      }
+      if (appLauncherRef.current && !appLauncherRef.current.contains(event.target as Node)) {
+        setShowAppLauncher(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const getInitials = (name?: string) => {
     if (!name) return 'LK';
     const parts = name.trim().split(' ');
@@ -33,12 +51,12 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="h-14 bg-white border-b border-slate-200 px-4 flex items-center justify-between sticky top-0 z-30 shadow-xs">
+    <header className="h-14 bg-white/95 backdrop-blur-md border-b border-slate-200/90 px-4 flex items-center justify-between sticky top-0 z-30 shadow-2xs">
       {/* Left section: Toggle & Org Selector */}
       <div className="flex items-center gap-3">
         <button
           onClick={onToggleSidebar}
-          className="w-7 h-7 rounded-full border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition"
+          className="btn-interactive w-7 h-7 rounded-full border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition"
           title={isSidebarCollapsed ? 'Mở rộng sidebar' : 'Thu gọn sidebar'}
         >
           {isSidebarCollapsed ? (
@@ -49,38 +67,41 @@ export const Header: React.FC<HeaderProps> = ({
         </button>
 
         {/* Organization Selector */}
-        <div className="relative">
+        <div className="relative" ref={orgRef}>
           <div
             onClick={() => setShowOrgDropdown(!showOrgDropdown)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-slate-100 cursor-pointer text-xs font-medium text-slate-700 select-none border border-transparent hover:border-slate-200 transition"
+            className="btn-interactive flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-slate-100 cursor-pointer text-xs font-medium text-slate-700 select-none border border-transparent hover:border-slate-200 transition"
           >
-            <span className="text-slate-500">Tổ chức:</span>
-            <span className="font-semibold text-slate-800">{selectedOrg}</span>
+            <span className="text-slate-400">Tổ chức:</span>
+            <span className="font-semibold text-slate-900">{selectedOrg}</span>
             <Users className="w-3.5 h-3.5 text-slate-400 ml-1" />
             <span className="text-[10px] text-slate-400 ml-0.5">⌄</span>
           </div>
 
           {showOrgDropdown && (
-            <div className="absolute top-full left-0 mt-1 w-52 bg-white rounded-lg shadow-lg border border-slate-100 py-1 z-50 animate-fadeIn">
+            <div className="absolute top-full left-0 mt-1.5 w-56 bg-white rounded-xl shadow-xl border border-slate-200/90 py-1.5 z-50 animate-slideDown">
+              <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Chọn cơ cấu tổ chức
+              </div>
               <div
                 onClick={() => {
                   setSelectedOrg('Công ty');
                   setShowOrgDropdown(false);
                 }}
-                className="px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 flex items-center justify-between cursor-pointer"
+                className="px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 hover:text-blue-700 flex items-center justify-between cursor-pointer transition"
               >
-                <span>Công ty (Mặc định)</span>
-                {selectedOrg === 'Công ty' && <Check className="w-3.5 h-3.5 text-[#1677ff]" />}
+                <span className="font-medium">Công ty (Mặc định)</span>
+                {selectedOrg === 'Công ty' && <Check className="w-3.5 h-3.5 text-blue-600 font-bold" />}
               </div>
               <div
                 onClick={() => {
                   setSelectedOrg('Chi nhánh Miền Bắc');
                   setShowOrgDropdown(false);
                 }}
-                className="px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 flex items-center justify-between cursor-pointer"
+                className="px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 hover:text-blue-700 flex items-center justify-between cursor-pointer transition"
               >
-                <span>Chi nhánh Miền Bắc</span>
-                {selectedOrg === 'Chi nhánh Miền Bắc' && <Check className="w-3.5 h-3.5 text-[#1677ff]" />}
+                <span className="font-medium">Chi nhánh Miền Bắc</span>
+                {selectedOrg === 'Chi nhánh Miền Bắc' && <Check className="w-3.5 h-3.5 text-blue-600 font-bold" />}
               </div>
             </div>
           )}
@@ -88,35 +109,61 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Right section: Apps, Notifications, User Avatar */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2.5">
         {/* App Launcher (9 dots icon) */}
-        <div className="relative">
+        <div className="relative" ref={appLauncherRef}>
           <button
             onClick={() => setShowAppLauncher(!showAppLauncher)}
-            className="w-8 h-8 rounded-md flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition"
+            className="btn-interactive w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition"
             title="Danh mục phân hệ"
           >
             <Grid className="w-4 h-4" />
           </button>
 
           {showAppLauncher && (
-            <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl shadow-xl border border-slate-100 p-3 z-50">
-              <div className="text-xs font-semibold text-slate-500 mb-2 px-1">PHÂN HỆ TINYKPI</div>
+            <div className="absolute right-0 top-full mt-2 w-68 bg-white rounded-2xl shadow-2xl border border-slate-200/90 p-3.5 z-50 animate-slideDown">
+              <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2.5 px-1">
+                PHÂN HỆ HỆ THỐNG TINYKPI
+              </div>
               <div className="grid grid-cols-2 gap-2 text-xs text-slate-700">
-                <a href="#/dashboard" onClick={() => setShowAppLauncher(false)} className="p-2 rounded-lg bg-blue-50 hover:bg-blue-100 flex flex-col items-center gap-1 text-center font-medium text-blue-700">
-                  <div className="w-6 h-6 rounded bg-blue-600 text-white flex items-center justify-center font-bold text-[10px]">BSC</div>
+                <a
+                  href="#/dashboard"
+                  onClick={() => setShowAppLauncher(false)}
+                  className="card-hover-elevate p-2.5 rounded-xl bg-blue-50/60 hover:bg-blue-100/70 border border-blue-100 flex flex-col items-center gap-1.5 text-center font-semibold text-blue-700"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-[10px] shadow-2xs">
+                    BSC
+                  </div>
                   <span>Chiến lược BSC</span>
                 </a>
-                <a href="#/master-process" onClick={() => setShowAppLauncher(false)} className="p-2 rounded-lg bg-slate-50 hover:bg-slate-100 flex flex-col items-center gap-1 text-center font-medium">
-                  <div className="w-6 h-6 rounded bg-indigo-600 text-white flex items-center justify-center font-bold text-[10px]">SOP</div>
+                <a
+                  href="#/master-process"
+                  onClick={() => setShowAppLauncher(false)}
+                  className="card-hover-elevate p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200/70 flex flex-col items-center gap-1.5 text-center font-semibold text-slate-700"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-[10px] shadow-2xs">
+                    SOP
+                  </div>
                   <span>Quy trình Lõi</span>
                 </a>
-                <a href="#/sla" onClick={() => setShowAppLauncher(false)} className="p-2 rounded-lg bg-slate-50 hover:bg-slate-100 flex flex-col items-center gap-1 text-center font-medium">
-                  <div className="w-6 h-6 rounded bg-emerald-600 text-white flex items-center justify-center font-bold text-[10px]">SLA</div>
+                <a
+                  href="#/sla"
+                  onClick={() => setShowAppLauncher(false)}
+                  className="card-hover-elevate p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200/70 flex flex-col items-center gap-1.5 text-center font-semibold text-slate-700"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-[10px] shadow-2xs">
+                    SLA
+                  </div>
                   <span>Quản lý SLA</span>
                 </a>
-                <a href="#/employees" onClick={() => setShowAppLauncher(false)} className="p-2 rounded-lg bg-slate-50 hover:bg-slate-100 flex flex-col items-center gap-1 text-center font-medium">
-                  <div className="w-6 h-6 rounded bg-amber-600 text-white flex items-center justify-center font-bold text-[10px]">HR</div>
+                <a
+                  href="#/employees"
+                  onClick={() => setShowAppLauncher(false)}
+                  className="card-hover-elevate p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200/70 flex flex-col items-center gap-1.5 text-center font-semibold text-slate-700"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-amber-600 text-white flex items-center justify-center font-bold text-[10px] shadow-2xs">
+                    HR
+                  </div>
                   <span>Cơ cấu Nhân sự</span>
                 </a>
               </div>
@@ -130,17 +177,17 @@ export const Header: React.FC<HeaderProps> = ({
         {/* User Avatar LK */}
         <button
           onClick={onOpenUserDrawer}
-          className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-700 via-amber-600 to-orange-500 text-white flex items-center justify-center text-xs font-bold shadow-sm hover:ring-2 hover:ring-blue-400 transition"
+          className="btn-interactive w-8 h-8 rounded-full bg-gradient-to-tr from-amber-700 via-amber-600 to-orange-500 text-white flex items-center justify-center text-xs font-bold shadow-2xs hover:ring-2 hover:ring-blue-400 transition"
           title="Tài khoản cá nhân"
         >
           {getInitials(user?.fullName)}
         </button>
       </div>
 
-      {/* Floating Ticket Button on the Right Edge */}
+      {/* Floating Ticket Button on the Right Edge with live status pulse */}
       <div
         onClick={() => setIsTicketDrawerOpen(true)}
-        className="fixed right-0 top-1/2 -translate-y-1/2 bg-[#1677ff] hover:bg-[#4096ff] text-white text-[11px] font-bold tracking-widest py-3 px-1 rounded-l-md shadow-lg cursor-pointer select-none z-40 [writing-mode:vertical-rl] transition group flex items-center justify-center gap-1"
+        className="fixed right-0 top-1/2 -translate-y-1/2 bg-[#1677ff] hover:bg-[#0958d9] active:bg-[#003eb3] text-white text-[11px] font-bold tracking-widest py-3 px-1.5 rounded-l-lg shadow-xl cursor-pointer select-none z-40 [writing-mode:vertical-rl] transition-all duration-200 group flex items-center justify-center gap-1.5 hover:px-2"
         title="Gửi Ticket Hỗ Trợ & Báo Cáo Sự Cố"
       >
         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse group-hover:scale-125 transition" />
