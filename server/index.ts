@@ -19,6 +19,7 @@ import monitoringRoutes from './modules/monitoring/monitoring.routes.js';
 import trainingRoutes from './modules/training-exams/training.routes.js';
 import settingsRoutes from './modules/settings/settings.routes.js';
 import notificationRoutes from './modules/notifications/notification.routes.js';
+import ticketRoutes from './modules/tickets/ticket.routes.js';
 
 const app = express();
 
@@ -58,6 +59,7 @@ app.use('/api/exams', trainingRoutes);
 app.use('/api/training', trainingRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/tickets', ticketRoutes);
 
 // 404 Handler
 app.use((req, res) => {

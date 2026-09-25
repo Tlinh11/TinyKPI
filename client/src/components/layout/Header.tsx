@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Users, Bell, Grid, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.js';
 import { NotificationDropdown } from './NotificationDropdown.js';
+import { TicketDrawer } from './TicketDrawer.js';
 
 interface HeaderProps {
   isSidebarCollapsed: boolean;
@@ -20,6 +21,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [showOrgDropdown, setShowOrgDropdown] = useState(false);
   const [selectedOrg, setSelectedOrg] = useState('Công ty');
   const [showAppLauncher, setShowAppLauncher] = useState(false);
+  const [isTicketDrawerOpen, setIsTicketDrawerOpen] = useState(false);
 
   const getInitials = (name?: string) => {
     if (!name) return 'LK';
@@ -137,11 +139,19 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Floating Ticket Button on the Right Edge */}
       <div
-        onClick={() => alert('Hệ thống Ticket phản hồi TinyKPI: 1900-xxxx')}
-        className="fixed right-0 top-1/2 -translate-y-1/2 bg-[#1677ff] hover:bg-[#4096ff] text-white text-[11px] font-bold tracking-widest py-3 px-1 rounded-l-md shadow-lg cursor-pointer select-none z-40 [writing-mode:vertical-rl] transition"
+        onClick={() => setIsTicketDrawerOpen(true)}
+        className="fixed right-0 top-1/2 -translate-y-1/2 bg-[#1677ff] hover:bg-[#4096ff] text-white text-[11px] font-bold tracking-widest py-3 px-1 rounded-l-md shadow-lg cursor-pointer select-none z-40 [writing-mode:vertical-rl] transition group flex items-center justify-center gap-1"
+        title="Gửi Ticket Hỗ Trợ & Báo Cáo Sự Cố"
       >
-        TICKET
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse group-hover:scale-125 transition" />
+        <span>TICKET</span>
       </div>
+
+      {/* Ticket Support Slide-over Drawer */}
+      <TicketDrawer
+        isOpen={isTicketDrawerOpen}
+        onClose={() => setIsTicketDrawerOpen(false)}
+      />
     </header>
   );
 };
