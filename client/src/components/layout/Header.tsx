@@ -1,17 +1,20 @@
 import React, { useState } from 'react';
 import { Users, Bell, Grid, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.js';
+import { NotificationDropdown } from './NotificationDropdown.js';
 
 interface HeaderProps {
   isSidebarCollapsed: boolean;
   onToggleSidebar: () => void;
   onOpenUserDrawer: () => void;
+  onNavigate?: (path: string) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   isSidebarCollapsed,
   onToggleSidebar,
   onOpenUserDrawer,
+  onNavigate,
 }) => {
   const { user } = useAuth();
   const [showOrgDropdown, setShowOrgDropdown] = useState(false);
@@ -119,15 +122,8 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
 
-        {/* Notifications */}
-        <button
-          onClick={() => alert('Không có thông báo mới')}
-          className="w-8 h-8 rounded-md flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition relative"
-          title="Thông báo"
-        >
-          <Bell className="w-4 h-4" />
-          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full" />
-        </button>
+        {/* Notifications Hub */}
+        <NotificationDropdown onNavigate={onNavigate} />
 
         {/* User Avatar LK */}
         <button

@@ -33,6 +33,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
           isSidebarCollapsed={isSidebarCollapsed}
           onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
           onOpenUserDrawer={() => setIsUserDrawerOpen(true)}
+          onNavigate={onNavigate}
         />
 
         {/* Dynamic Page Viewport */}
