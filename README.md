@@ -1,4 +1,4 @@
-# TopKPI Clone Web Application
+# TinyKPI Web Application
 
 Hệ thống quản lý hiệu suất doanh nghiệp (BSC / KPI) và quy trình điều hành chuẩn hóa, clone trực tiếp từ nền tảng **TopKPI** (`https://topkpi-linux.toppion.com.vn`).
 
