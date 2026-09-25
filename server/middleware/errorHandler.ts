@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
+export { AppError } from '../utils/response.js';
 import { AppError } from '../utils/response.js';
 
 export function errorHandler(

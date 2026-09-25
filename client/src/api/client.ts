@@ -36,3 +36,22 @@ export async function apiClient<T>(
 
   return data.data;
 }
+
+export const api = {
+  get: async (url: string) => {
+    const data = await apiClient<any>(url.replace('/api', ''), { method: 'GET' });
+    return { data: { success: true, data } };
+  },
+  post: async (url: string, body?: any) => {
+    const data = await apiClient<any>(url.replace('/api', ''), { method: 'POST', body: JSON.stringify(body) });
+    return { data: { success: true, data } };
+  },
+  put: async (url: string, body?: any) => {
+    const data = await apiClient<any>(url.replace('/api', ''), { method: 'PUT', body: JSON.stringify(body) });
+    return { data: { success: true, data } };
+  },
+  delete: async (url: string) => {
+    const data = await apiClient<any>(url.replace('/api', ''), { method: 'DELETE' });
+    return { data: { success: true, data } };
+  },
+};

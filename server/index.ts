@@ -13,6 +13,10 @@ import bscRoutes from './modules/bsc/bsc.routes.js';
 import processRoutes from './modules/master-process/process.routes.js';
 import slaRoutes from './modules/sla/sla.routes.js';
 import auditRoutes from './modules/audit-logs/audit.routes.js';
+import taskRoutes from './modules/tasks/task.routes.js';
+import calendarRoutes from './modules/calendar/calendar.routes.js';
+import monitoringRoutes from './modules/monitoring/monitoring.routes.js';
+import trainingRoutes from './modules/training-exams/training.routes.js';
 
 const app = express();
 
@@ -44,6 +48,11 @@ app.use('/api/bsc', bscRoutes);
 app.use('/api/processes', processRoutes);
 app.use('/api/sla', slaRoutes);
 app.use('/api/audit-logs', auditRoutes);
+app.use('/api/tasks', taskRoutes);
+app.use('/api/calendar', calendarRoutes);
+app.use('/api/monitoring', monitoringRoutes);
+app.use('/api/exams', trainingRoutes);
+app.use('/api/training', trainingRoutes);
 
 // 404 Handler
 app.use((req, res) => {

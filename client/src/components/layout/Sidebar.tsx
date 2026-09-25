@@ -183,8 +183,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </button>
 
               <button
-                onClick={() => alert('Phân hệ Quản lý lịch làm việc')}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100 transition"
+                onClick={() => onNavigate('/calendar')}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
+                  isActive('/calendar')
+                    ? 'bg-[#e6f4ff] text-[#1677ff] font-semibold'
+                    : 'text-slate-600 hover:bg-slate-100'
+                }`}
                 title="Quản lý lịch làm việc"
               >
                 <Calendar className="w-4 h-4 shrink-0" />
@@ -192,8 +196,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </button>
 
               <button
-                onClick={() => alert('Hộp thư công việc: Không có tác vụ tồn đọng')}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100 transition"
+                onClick={() => onNavigate('/tasks')}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
+                  isActive('/tasks')
+                    ? 'bg-[#e6f4ff] text-[#1677ff] font-semibold'
+                    : 'text-slate-600 hover:bg-slate-100'
+                }`}
                 title="Hộp thư công việc"
               >
                 <Mail className="w-4 h-4 shrink-0" />
@@ -201,8 +209,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </button>
 
               <button
-                onClick={() => alert('Monitoring KPI Realtime')}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100 transition"
+                onClick={() => onNavigate('/monitoring')}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
+                  isActive('/monitoring')
+                    ? 'bg-[#e6f4ff] text-[#1677ff] font-semibold'
+                    : 'text-slate-600 hover:bg-slate-100'
+                }`}
                 title="Monitoring"
               >
                 <Activity className="w-4 h-4 shrink-0" />
@@ -210,8 +222,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </button>
 
               <button
-                onClick={() => alert('Phân tích & Báo cáo tổng hợp')}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100 transition"
+                onClick={() => onNavigate('/reports')}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
+                  isActive('/reports')
+                    ? 'bg-[#e6f4ff] text-[#1677ff] font-semibold'
+                    : 'text-slate-600 hover:bg-slate-100'
+                }`}
                 title="Phân tích & Báo cáo"
               >
                 <FileSpreadsheet className="w-4 h-4 shrink-0" />
@@ -219,8 +235,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </button>
 
               <button
-                onClick={() => alert('Ngân hàng câu hỏi & Đề thi')}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100 transition"
+                onClick={() => onNavigate('/exam-bank')}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
+                  isActive('/exam-bank')
+                    ? 'bg-[#e6f4ff] text-[#1677ff] font-semibold'
+                    : 'text-slate-600 hover:bg-slate-100'
+                }`}
                 title="Ngân hàng câu hỏi & Đề thi"
               >
                 <ListTodo className="w-4 h-4 shrink-0" />
@@ -228,8 +248,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </button>
 
               <button
-                onClick={() => alert('Thi Quy Trình')}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100 transition"
+                onClick={() => onNavigate('/exams')}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
+                  isActive('/exams')
+                    ? 'bg-[#e6f4ff] text-[#1677ff] font-semibold'
+                    : 'text-slate-600 hover:bg-slate-100'
+                }`}
                 title="Thi Quy Trình"
               >
                 <Award className="w-4 h-4 shrink-0" />
@@ -237,21 +261,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </button>
 
               <button
-                onClick={() => alert('Quản lý giáo trình đào tạo')}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100 transition"
-                title="Quản lý giáo trình"
-              >
-                <BookOpen className="w-4 h-4 shrink-0" />
-                {!isCollapsed && <span>Quản lý giáo trình</span>}
-              </button>
-
-              <button
-                onClick={() => alert('Học giáo trình trực tuyến')}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100 transition"
-                title="Học giáo trình"
+                onClick={() => onNavigate('/training')}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
+                  isActive('/training')
+                    ? 'bg-[#e6f4ff] text-[#1677ff] font-semibold'
+                    : 'text-slate-600 hover:bg-slate-100'
+                }`}
+                title="Quản lý & Học giáo trình"
               >
                 <GraduationCap className="w-4 h-4 shrink-0" />
-                {!isCollapsed && <span>Học giáo trình</span>}
+                {!isCollapsed && <span>Học giáo trình trực tuyến</span>}
               </button>
             </div>
           </div>

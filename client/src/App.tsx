@@ -14,6 +14,13 @@ import { PositionsPage } from './pages/PositionsPage.js';
 import { MasterProcessPage } from './pages/MasterProcessPage.js';
 import { SlaPage } from './pages/SlaPage.js';
 import { AuditLogsPage } from './pages/AuditLogsPage.js';
+import { TasksPage } from './pages/TasksPage.js';
+import { CalendarPage } from './pages/CalendarPage.js';
+import { MonitoringPage } from './pages/MonitoringPage.js';
+import { ReportsPage } from './pages/ReportsPage.js';
+import { ExamBankPage } from './pages/ExamBankPage.js';
+import { ExamsPage } from './pages/ExamsPage.js';
+import { TrainingPage } from './pages/TrainingPage.js';
 
 export const App: React.FC = () => {
   const { user, isLoading } = useAuth();
@@ -74,6 +81,20 @@ export const App: React.FC = () => {
         return <SlaPage />;
       case '/audit-logs':
         return <AuditLogsPage />;
+      case '/tasks':
+        return <TasksPage onNavigate={navigateTo} />;
+      case '/calendar':
+        return <CalendarPage onNavigate={navigateTo} />;
+      case '/monitoring':
+        return <MonitoringPage onNavigate={navigateTo} />;
+      case '/reports':
+        return <ReportsPage onNavigate={navigateTo} />;
+      case '/exam-bank':
+        return <ExamBankPage onNavigate={navigateTo} />;
+      case '/exams':
+        return <ExamsPage onNavigate={navigateTo} />;
+      case '/training':
+        return <TrainingPage onNavigate={navigateTo} />;
       case '/dashboard':
       default:
         return <DashboardPage onNavigate={navigateTo} />;

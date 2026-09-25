@@ -57,6 +57,7 @@ model Department {
   employeeAssignments EmployeeAssignment[]
   masterProcesses     MasterProcess[]
   kpiIndicators       KpiIndicator[]
+  tasks               Task[]
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
 
@@ -103,6 +104,11 @@ model User {
   employeeAssignments EmployeeAssignment[]
   assignedKpis        KpiIndicator[]
   auditLogs           AuditLog[]
+  assignedTasks       Task[]               @relation("AssignedTasks")
+  createdTasks        Task[]               @relation("CreatedTasks")
+  taskComments        TaskComment[]
+  organizedEvents     CalendarEvent[]      @relation("OrganizedEvents")
+  examSubmissions     ExamSubmission[]
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
 
@@ -178,6 +184,7 @@ model StrategicObjective {
   description   String?
   order         Int            @default(1)
   kpiIndicators KpiIndicator[]
+  tasks         Task[]
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
@@ -238,8 +245,9 @@ model MasterProcess {
   departmentId String?
   department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   description  String?
-  status       String      @default("ACTIVE")
-  createdAt    DateTime    @default(now())
+  status       String         @default("ACTIVE")
+  examQuestions ExamQuestion[]
+  createdAt    DateTime       @default(now())
   updatedAt    DateTime    @updatedAt
 
   @@map("master_processes")
@@ -263,6 +271,7 @@ model SlaItem {
   taskType      String
   durationHours Float    @default(24)
   status        String   @default("ACTIVE")
+  tasks         Task[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -284,3 +293,116 @@ model AuditLog {
 
   @@map("audit_logs")
 }
+
+// -------------------------------------------------------------
+// OPERATIONS & WORKFLOW SUITE MODELS
+// -------------------------------------------------------------
+
+model Task {
+  id            String             @id @default(cuid())
+  title         String
+  description   String?
+  priority      String             @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  status        String             @default("TODO")   // TODO, IN_PROGRESS, REVIEW, DONE, OVERDUE
+  progress      Int                @default(0)        // 0 - 100%
+  startDate     DateTime?
+  dueDate       DateTime?
+  completedAt   DateTime?
+  assigneeId    String
+  assignee      User               @relation("AssignedTasks", fields: [assigneeId], references: [id])
+  creatorId     String
+  creator       User               @relation("CreatedTasks", fields: [creatorId], references: [id])
+  departmentId  String?
+  department    Department?        @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  slaItemId     String?
+  slaItem       SlaItem?           @relation(fields: [slaItemId], references: [id], onDelete: SetNull)
+  objectiveId   String?
+  objective     StrategicObjective? @relation(fields: [objectiveId], references: [id], onDelete: SetNull)
+  checklists    TaskChecklist[]
+  comments      TaskComment[]
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  @@map("tasks")
+}
+
+model TaskChecklist {
+  id        String   @id @default(cuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  title     String
+  isDone    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("task_checklists")
+}
+
+model TaskComment {
+  id        String   @id @default(cuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String
+  createdAt DateTime @default(now())
+
+  @@map("task_comments")
+}
+
+model CalendarEvent {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  type        String   @default("MEETING") // MEETING, WORK, STRATEGY, DEADLINE
+  startTime   DateTime
+  endTime     DateTime
+  isAllDay    Boolean  @default(false)
+  location    String?
+  organizerId String
+  organizer   User     @relation("OrganizedEvents", fields: [organizerId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("calendar_events")
+}
+
+model ExamQuestion {
+  id          String         @id @default(cuid())
+  question    String
+  options     String         // JSON string: ["Option A", "Option B", ...]
+  correctIdx  Int            @default(0)
+  explanation String?
+  processId   String?
+  process     MasterProcess? @relation(fields: [processId], references: [id], onDelete: SetNull)
+  createdAt   DateTime       @default(now())
+
+  @@map("exam_questions")
+}
+
+model ExamSubmission {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  score      Float
+  total      Int
+  passed     Boolean
+  duration   Int      // duration in seconds
+  createdAt  DateTime @default(now())
+
+  @@map("exam_submissions")
+}
+
+model TrainingCourse {
+  id          String   @id @default(cuid())
+  title       String
+  code        String   @unique
+  description String?
+  category    String   // "Quy trình Lõi", "Quy tắc KPI", "Văn hóa TinyKPI"
+  duration    String   // "45 phút"
+  lessonsJson String   // JSON array of lessons: [{ title, duration, videoUrl, content }]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("training_courses")
+}
+
