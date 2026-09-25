@@ -334,14 +334,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   </button>
 
                   <button
-                    onClick={() => onNavigate('/departments')}
-                    className="w-full text-left px-3 py-1.5 rounded-md text-xs text-slate-500 hover:bg-slate-50"
+                    onClick={() => onNavigate('/org-chart')}
+                    className={`w-full text-left px-3 py-1.5 rounded-md text-xs transition ${
+                      isActive('/org-chart')
+                        ? 'bg-[#e6f4ff] text-[#1677ff] font-semibold'
+                        : 'text-slate-600 hover:bg-slate-50'
+                    }`}
                   >
                     Sơ đồ tổ chức
                   </button>
                   <button
-                    onClick={() => alert('Danh sách nhân sự nghỉ dài hạn')}
-                    className="w-full text-left px-3 py-1.5 rounded-md text-xs text-slate-500 hover:bg-slate-50"
+                    onClick={() => onNavigate('/employees/on-leave')}
+                    className={`w-full text-left px-3 py-1.5 rounded-md text-xs transition ${
+                      isActive('/employees/on-leave')
+                        ? 'bg-[#e6f4ff] text-[#1677ff] font-semibold'
+                        : 'text-slate-600 hover:bg-slate-50'
+                    }`}
                   >
                     Nghỉ dài hạn
                   </button>
@@ -350,7 +358,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     className={`w-full text-left px-3 py-1.5 rounded-md text-xs transition ${
                       isActive('/roles')
                         ? 'bg-[#e6f4ff] text-[#1677ff] font-semibold'
-                        : 'text-slate-500 hover:bg-slate-50'
+                        : 'text-slate-600 hover:bg-slate-50'
                     }`}
                   >
                     Nhóm quyền
@@ -360,8 +368,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             <button
-              onClick={() => alert('Quản lý biểu mẫu')}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100 transition mt-0.5"
+              onClick={() => onNavigate('/forms')}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition mt-0.5 ${
+                isActive('/forms')
+                  ? 'bg-[#e6f4ff] text-[#1677ff] font-semibold'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
               title="Quản lý biểu mẫu"
             >
               <FileCode className="w-4 h-4 shrink-0" />
@@ -369,8 +381,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </button>
 
             <button
-              onClick={() => alert('Quy tắc AI gợi ý KPI')}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100 transition"
+              onClick={() => onNavigate('/ai-rules')}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
+                isActive('/ai-rules')
+                  ? 'bg-[#e6f4ff] text-[#1677ff] font-semibold'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
               title="Quy tắc AI"
             >
               <Sparkles className="w-4 h-4 shrink-0 text-amber-500" />
@@ -378,8 +394,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </button>
 
             <button
-              onClick={() => alert('Cấu hình Email thông báo')}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100 transition"
+              onClick={() => onNavigate('/email-settings')}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
+                isActive('/email-settings')
+                  ? 'bg-[#e6f4ff] text-[#1677ff] font-semibold'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
               title="Cấu hình Email"
             >
               <MailCheck className="w-4 h-4 shrink-0" />

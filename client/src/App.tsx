@@ -21,6 +21,12 @@ import { ReportsPage } from './pages/ReportsPage.js';
 import { ExamBankPage } from './pages/ExamBankPage.js';
 import { ExamsPage } from './pages/ExamsPage.js';
 import { TrainingPage } from './pages/TrainingPage.js';
+import { RolesPage } from './pages/RolesPage.js';
+import { OrgChartPage } from './pages/OrgChartPage.js';
+import { LeaveRecordsPage } from './pages/LeaveRecordsPage.js';
+import { FormsPage } from './pages/FormsPage.js';
+import { AiRulesPage } from './pages/AiRulesPage.js';
+import { EmailSettingsPage } from './pages/EmailSettingsPage.js';
 
 export const App: React.FC = () => {
   const { user, isLoading } = useAuth();
@@ -95,6 +101,18 @@ export const App: React.FC = () => {
         return <ExamsPage onNavigate={navigateTo} />;
       case '/training':
         return <TrainingPage onNavigate={navigateTo} />;
+      case '/roles':
+        return <RolesPage />;
+      case '/org-chart':
+        return <OrgChartPage />;
+      case '/employees/on-leave':
+        return <LeaveRecordsPage />;
+      case '/forms':
+        return <FormsPage />;
+      case '/ai-rules':
+        return <AiRulesPage />;
+      case '/email-settings':
+        return <EmailSettingsPage />;
       case '/dashboard':
       default:
         return <DashboardPage onNavigate={navigateTo} />;

@@ -20,17 +20,24 @@ export async function apiClient<T>(
     headers,
   });
 
-  const data = await response.json();
+  let data: any = null;
+  const rawText = await response.text();
+  try {
+    data = rawText ? JSON.parse(rawText) : {};
+  } catch {
+    data = {
+      success: false,
+      message: `Máy chủ phản hồi không đúng định dạng (${response.status} ${response.statusText}). Có thể backend đang khởi động lại.`,
+    };
+  }
 
   if (!response.ok || !data.success) {
-    if (response.status === 401) {
+    if (response.status === 401 && !endpoint.includes('/auth/login')) {
       localStorage.removeItem('topkpi_token');
       localStorage.removeItem('topkpi_user');
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
-      }
+      window.location.hash = '/login';
     }
-    const errorMsg = data.message || 'Có lỗi xảy ra, vui lòng thử lại';
+    const errorMsg = data.message || `Lỗi máy chủ (${response.status} ${response.statusText})`;
     throw new Error(errorMsg);
   }
 

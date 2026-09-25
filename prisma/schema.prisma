@@ -109,6 +109,7 @@ model User {
   taskComments        TaskComment[]
   organizedEvents     CalendarEvent[]      @relation("OrganizedEvents")
   examSubmissions     ExamSubmission[]
+  leaveRecords        EmployeeLeaveRecord[]
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
 
@@ -404,5 +405,65 @@ model TrainingCourse {
   updatedAt   DateTime @updatedAt
 
   @@map("training_courses")
+}
+
+// -------------------------------------------------------------
+// SETTINGS & ADMINISTRATION SUITE MODELS
+// -------------------------------------------------------------
+
+model EmployeeLeaveRecord {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leaveType    String    // MATERNITY, SICK, UNPAID, SABBATICAL
+  startDate    DateTime
+  endDate      DateTime?
+  status       String    @default("ACTIVE") // ACTIVE, COMPLETED
+  reason       String?
+  freezeKpi    Boolean   @default(true)
+  approvedBy   String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@map("employee_leave_records")
+}
+
+model FormTemplate {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  category    String   // KPI, SLA, PROCESS, HR
+  description String?
+  fieldsJson  String   // JSON string defining form fields
+  status      String   @default("ACTIVE")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("form_templates")
+}
+
+model AiKpiRule {
+  id           String   @id @default(cuid())
+  industry     String   // TECHNOLOGY, RETAIL, MANUFACTURING, FINANCE, GENERAL
+  position     String   // CEO, MANAGER, SALES, DEV, HR, GENERAL
+  perspective  String   // FINANCIAL, CUSTOMER, INTERNAL_PROCESS, LEARNING_GROWTH
+  suggestedKpi String
+  formula      String?
+  unit         String   @default("%")
+  weight       Float    @default(20)
+  createdAt    DateTime @default(now())
+
+  @@map("ai_kpi_rules")
+}
+
+model SystemSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  group     String   // EMAIL, NOTIFICATION, SECURITY, GENERAL
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("system_settings")
 }
 

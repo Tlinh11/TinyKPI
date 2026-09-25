@@ -17,6 +17,7 @@ import taskRoutes from './modules/tasks/task.routes.js';
 import calendarRoutes from './modules/calendar/calendar.routes.js';
 import monitoringRoutes from './modules/monitoring/monitoring.routes.js';
 import trainingRoutes from './modules/training-exams/training.routes.js';
+import settingsRoutes from './modules/settings/settings.routes.js';
 
 const app = express();
 
@@ -53,6 +54,7 @@ app.use('/api/calendar', calendarRoutes);
 app.use('/api/monitoring', monitoringRoutes);
 app.use('/api/exams', trainingRoutes);
 app.use('/api/training', trainingRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // 404 Handler
 app.use((req, res) => {
