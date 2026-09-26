@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   FileText,
   Edit3,
@@ -24,6 +24,9 @@ import {
   ArrowLeft,
   Sparkles,
   Layers,
+  ArrowUp,
+  ArrowDown,
+  Code,
 } from 'lucide-react';
 import { api } from '../api/client.js';
 
@@ -36,6 +39,7 @@ export interface QuestionOption {
   text: string;
   imageUrl?: string;
   isCorrect?: boolean;
+  matchTarget?: string; // For GHEP
 }
 
 export interface ExamQuestionItem {
@@ -51,6 +55,8 @@ export interface ExamQuestionItem {
   feedbackCorrect?: string;
   feedbackWrong?: string;
   explanation?: string;
+  correctBlankWord?: string; // For DIEN
+  hotspotZone?: string; // For HOTSPOT
   orderIndex: number;
 }
 
@@ -191,6 +197,16 @@ export const ExamBankPage: React.FC<{ onNavigate?: (path: string) => void }> = (
   const [activeQuestionIdx, setActiveQuestionIdx] = useState<number>(0);
   const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState<boolean>(false);
   const [previewModalOpen, setPreviewModalOpen] = useState<boolean>(false);
+  const [showHtmlPreview, setShowHtmlPreview] = useState<boolean>(false);
+
+  // Drag and drop state for Question list in Column 1
+  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+
+  // Refs for upload inputs and content textarea
+  const contentInputRef = useRef<HTMLTextAreaElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch initial data
   const fetchData = async () => {
@@ -324,11 +340,68 @@ export const ExamBankPage: React.FC<{ onNavigate?: (path: string) => void }> = (
     }
   };
 
+  // Drag and Drop handlers for questions in Column 1
+  const handleDragStart = (idx: number) => {
+    setDraggedIdx(idx);
+  };
+
+  const handleDragOver = (e: React.DragEvent, idx: number) => {
+    e.preventDefault();
+    if (dragOverIdx !== idx) {
+      setDragOverIdx(idx);
+    }
+  };
+
+  const handleDrop = (targetIdx: number) => {
+    if (draggedIdx === null || draggedIdx === targetIdx || !currentEditingSet) {
+      setDraggedIdx(null);
+      setDragOverIdx(null);
+      return;
+    }
+    const questions = [...currentEditingSet.questions];
+    const [moved] = questions.splice(draggedIdx, 1);
+    questions.splice(targetIdx, 0, moved);
+    questions.forEach((q, i) => {
+      q.orderIndex = i + 1;
+    });
+    setCurrentEditingSet({ ...currentEditingSet, questions });
+    setActiveQuestionIdx(targetIdx);
+    setDraggedIdx(null);
+    setDragOverIdx(null);
+  };
+
   // Question editing actions
   const handleAddQuestion = (type: QuestionType) => {
     if (!currentEditingSet) return;
     const count = currentEditingSet.questions.length + 1;
     const cfg = QUESTION_TYPES_CONFIG.find((c) => c.type === type);
+
+    let defaultOptions: QuestionOption[] = [
+      { id: 'opt-1', label: 'A', text: '', isCorrect: true },
+      { id: 'opt-2', label: 'B', text: '', isCorrect: false },
+      { id: 'opt-3', label: 'C', text: '', isCorrect: false },
+      { id: 'opt-4', label: 'D', text: '', isCorrect: false },
+    ];
+
+    if (type === 'DS') {
+      defaultOptions = [
+        { id: 'opt-true', label: 'A', text: 'Đúng', isCorrect: true },
+        { id: 'opt-false', label: 'B', text: 'Sai', isCorrect: false },
+      ];
+    } else if (type === 'XEP') {
+      defaultOptions = [
+        { id: 'opt-1', label: '1', text: 'Bước 1: Tiếp nhận yêu cầu', isCorrect: true },
+        { id: 'opt-2', label: '2', text: 'Bước 2: Phê duyệt sơ bộ', isCorrect: true },
+        { id: 'opt-3', label: '3', text: 'Bước 3: Thực thi quy trình', isCorrect: true },
+      ];
+    } else if (type === 'GHEP') {
+      defaultOptions = [
+        { id: 'opt-1', label: 'A', text: 'Bước 1', matchTarget: 'Tiếp nhận thông tin' },
+        { id: 'opt-2', label: 'B', text: 'Bước 2', matchTarget: 'Thẩm định hồ sơ' },
+        { id: 'opt-3', label: 'C', text: 'Bước 3', matchTarget: 'Bàn giao nghiệm thu' },
+      ];
+    }
+
     const newQ: ExamQuestionItem = {
       id: `q-${Date.now()}`,
       setId: currentEditingSet.id,
@@ -339,19 +412,11 @@ export const ExamBankPage: React.FC<{ onNavigate?: (path: string) => void }> = (
       orderIndex: count,
       feedbackCorrect: 'Chính xác! Rất tốt.',
       feedbackWrong: 'Chưa đúng. Vui lòng xem lại tài liệu.',
-      options:
-        type === 'DS'
-          ? [
-              { id: 'opt-true', label: 'A', text: 'Đúng', isCorrect: true },
-              { id: 'opt-false', label: 'B', text: 'Sai', isCorrect: false },
-            ]
-          : [
-              { id: 'opt-1', label: 'A', text: '', isCorrect: true },
-              { id: 'opt-2', label: 'B', text: '', isCorrect: false },
-              { id: 'opt-3', label: 'C', text: '', isCorrect: false },
-              { id: 'opt-4', label: 'D', text: '', isCorrect: false },
-            ],
+      correctBlankWord: type === 'DIEN' ? 'SLA' : undefined,
+      hotspotZone: type === 'HOTSPOT' ? 'Vùng nút Phê duyệt góc phải' : undefined,
+      options: defaultOptions,
     };
+
     setCurrentEditingSet({
       ...currentEditingSet,
       questions: [...currentEditingSet.questions, newQ],
@@ -413,11 +478,9 @@ export const ExamBankPage: React.FC<{ onNavigate?: (path: string) => void }> = (
     if (!currentEditingSet) return;
     const q = currentEditingSet.questions[activeQuestionIdx];
     if (q.type === 'TNn') {
-      // Multiple selection toggle
       const updated = q.options.map((opt, i) => (i === optIdx ? { ...opt, isCorrect: !opt.isCorrect } : opt));
       handleUpdateCurrentQuestion({ options: updated });
     } else {
-      // Single selection
       const updated = q.options.map((opt, i) => ({ ...opt, isCorrect: i === optIdx }));
       handleUpdateCurrentQuestion({ options: updated });
     }
@@ -434,6 +497,71 @@ export const ExamBankPage: React.FC<{ onNavigate?: (path: string) => void }> = (
     handleUpdateCurrentQuestion({ options: updated });
   };
 
+  // Reordering steps for XEP type
+  const handleMoveOptionOrder = (optIdx: number, direction: 'up' | 'down') => {
+    if (!currentEditingSet) return;
+    const q = currentEditingSet.questions[activeQuestionIdx];
+    const options = [...q.options];
+    if (direction === 'up' && optIdx > 0) {
+      const temp = options[optIdx];
+      options[optIdx] = options[optIdx - 1];
+      options[optIdx - 1] = temp;
+    } else if (direction === 'down' && optIdx < options.length - 1) {
+      const temp = options[optIdx];
+      options[optIdx] = options[optIdx + 1];
+      options[optIdx + 1] = temp;
+    }
+    options.forEach((opt, i) => {
+      opt.label = `${i + 1}`;
+    });
+    handleUpdateCurrentQuestion({ options });
+  };
+
+  // Rich Text Formatting helper
+  const handleFormatText = (wrapper: 'b' | 'i' | 'u' | 'list') => {
+    const textarea = contentInputRef.current;
+    if (!textarea || !currentEditingSet) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const currentText = textarea.value;
+    const selected = currentText.substring(start, end) || 'văn bản mẫu';
+
+    let formatted = '';
+    if (wrapper === 'b') formatted = `<strong>${selected}</strong>`;
+    else if (wrapper === 'i') formatted = `<em>${selected}</em>`;
+    else if (wrapper === 'u') formatted = `<u>${selected}</u>`;
+    else if (wrapper === 'list') formatted = `\n<ul>\n  <li>${selected}</li>\n</ul>\n`;
+
+    const newContent = currentText.substring(0, start) + formatted + currentText.substring(end);
+    handleUpdateCurrentQuestion({ content: newContent });
+  };
+
+  // Local file upload handlers
+  const handleFileImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      if (ev.target?.result) {
+        handleUpdateCurrentQuestion({ imageUrl: ev.target.result as string });
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleFileVideo = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      if (ev.target?.result) {
+        handleUpdateCurrentQuestion({ videoUrl: ev.target.result as string });
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   // ---------------- VIEW 1: SOẠN THẢO BỘ CÂU HỎI (3 CỘT) ----------------
   if (isEditorMode && currentEditingSet) {
     const curQ = currentEditingSet.questions[activeQuestionIdx] || currentEditingSet.questions[0];
@@ -441,6 +569,10 @@ export const ExamBankPage: React.FC<{ onNavigate?: (path: string) => void }> = (
 
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col font-sans select-none animate-fadeIn">
+        {/* Hidden File Pickers */}
+        <input ref={imageInputRef} type="file" accept="image/*" onChange={handleFileImage} className="hidden" />
+        <input ref={videoInputRef} type="file" accept="video/*" onChange={handleFileVideo} className="hidden" />
+
         {/* Top Navbar */}
         <header className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shadow-xs sticky top-0 z-30">
           <div className="flex items-center gap-4">
@@ -531,13 +663,13 @@ export const ExamBankPage: React.FC<{ onNavigate?: (path: string) => void }> = (
         <div className="bg-blue-50/80 border-b border-blue-100 px-6 py-2 text-xs text-blue-700 flex items-center gap-2">
           <AlertCircle className="w-4 h-4 text-blue-600 shrink-0" />
           <span>
-            Chọn loại câu hỏi và điểm số ở panel bên phải, soạn nội dung + đáp án ở giữa, dùng nút Preview để xem trước như học viên.
+            Chọn loại câu hỏi và điểm số ở panel bên phải, soạn nội dung + đáp án ở giữa, dùng nút Preview để xem trước như học viên. Bạn có thể kéo thả chuột để sắp xếp lại vị trí câu hỏi ở cột bên trái.
           </span>
         </div>
 
         {/* 3 Columns Layout */}
         <div className="flex-1 flex overflow-hidden">
-          {/* COLUMN 1: QUESTION LIST (LEFT) */}
+          {/* COLUMN 1: QUESTION LIST WITH DRAG & DROP (LEFT) */}
           <aside className="w-64 bg-white border-r border-slate-200 flex flex-col shrink-0">
             <div className="p-3 border-b border-slate-100 flex items-center justify-between">
               <span className="text-xs font-bold text-slate-700">
@@ -552,18 +684,25 @@ export const ExamBankPage: React.FC<{ onNavigate?: (path: string) => void }> = (
               {currentEditingSet.questions.map((q, idx) => {
                 const cfg = QUESTION_TYPES_CONFIG.find((c) => c.type === q.type) || QUESTION_TYPES_CONFIG[0];
                 const isActive = idx === activeQuestionIdx;
+                const isDragOver = dragOverIdx === idx;
                 return (
                   <div
                     key={q.id || idx}
+                    draggable
+                    onDragStart={() => handleDragStart(idx)}
+                    onDragOver={(e) => handleDragOver(e, idx)}
+                    onDrop={() => handleDrop(idx)}
                     onClick={() => setActiveQuestionIdx(idx)}
-                    className={`flex items-center justify-between p-2.5 rounded-lg cursor-pointer transition border ${
+                    className={`flex items-center justify-between p-2.5 rounded-lg cursor-grab active:cursor-grabbing transition border ${
+                      isDragOver ? 'border-t-2 border-blue-500 bg-blue-50/40' : ''
+                    } ${
                       isActive
                         ? 'bg-blue-50/70 border-blue-300 text-blue-900 shadow-xs'
                         : 'bg-white border-slate-100 hover:border-slate-200 hover:bg-slate-50/80 text-slate-700'
                     }`}
                   >
                     <div className="flex items-center gap-2 truncate">
-                      <GripVertical className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+                      <GripVertical className="w-3.5 h-3.5 text-slate-300 hover:text-slate-500 shrink-0" />
                       <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded ${cfg.badgeBg} ${cfg.badgeText}`}>
                         {cfg.code}
                       </span>
@@ -603,51 +742,80 @@ export const ExamBankPage: React.FC<{ onNavigate?: (path: string) => void }> = (
 
             {/* Question Content */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 block">Nội dung câu hỏi</label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-700 block">Nội dung câu hỏi</label>
+                {showHtmlPreview && (
+                  <span className="text-[11px] text-blue-600 font-medium">Chế độ xem trước HTML</span>
+                )}
+              </div>
 
               {/* Formatting Toolbar */}
               <div className="flex items-center gap-1 border border-slate-200 bg-slate-50/80 px-2 py-1 rounded-t-md text-slate-600 text-xs">
                 <button
                   type="button"
+                  onClick={() => handleFormatText('b')}
                   className="px-2 py-1 hover:bg-slate-200 rounded font-bold"
-                  title="In đậm"
+                  title="In đậm (Bold)"
                 >
                   B
                 </button>
                 <button
                   type="button"
+                  onClick={() => handleFormatText('i')}
                   className="px-2 py-1 hover:bg-slate-200 rounded italic"
-                  title="In nghiêng"
+                  title="In nghiêng (Italic)"
                 >
                   I
                 </button>
                 <button
                   type="button"
+                  onClick={() => handleFormatText('u')}
                   className="px-2 py-1 hover:bg-slate-200 rounded underline"
-                  title="Gạch chân"
+                  title="Gạch chân (Underline)"
                 >
                   U
                 </button>
                 <span className="text-slate-300 mx-1">|</span>
-                <button type="button" className="px-2 py-1 hover:bg-slate-200 rounded" title="Danh sách">
+                <button
+                  type="button"
+                  onClick={() => handleFormatText('list')}
+                  className="px-2 py-1 hover:bg-slate-200 rounded"
+                  title="Thêm danh sách"
+                >
                   • Danh sách
                 </button>
                 <span className="text-slate-300 mx-1">|</span>
-                <button type="button" className="px-2 py-1 hover:bg-slate-200 rounded text-[11px] text-slate-500">
-                  Mã HTML
+                <button
+                  type="button"
+                  onClick={() => setShowHtmlPreview(!showHtmlPreview)}
+                  className={`px-2 py-1 rounded text-[11px] flex items-center gap-1 transition ${
+                    showHtmlPreview ? 'bg-blue-600 text-white' : 'hover:bg-slate-200 text-slate-600'
+                  }`}
+                  title="Bật/Tắt xem trước HTML"
+                >
+                  <Code className="w-3 h-3" />
+                  <span>Mã HTML</span>
                 </button>
               </div>
 
-              <textarea
-                rows={4}
-                value={curQ.content}
-                onChange={(e) => handleUpdateCurrentQuestion({ content: e.target.value })}
-                className="w-full text-sm text-slate-800 p-3 border border-t-0 border-slate-200 rounded-b-md focus:border-[#1677ff] outline-hidden resize-y transition"
-                placeholder="Nhập nội dung đề bài câu hỏi tại đây..."
-              />
+              {showHtmlPreview ? (
+                <div
+                  className="w-full min-h-[100px] p-3 border border-t-0 border-slate-200 rounded-b-md bg-slate-50 text-xs text-slate-800 prose prose-sm max-w-none"
+                  dangerouslySetInnerHTML={{ __html: curQ.content || '<p class="text-slate-400">Chưa có nội dung</p>' }}
+                />
+              ) : (
+                <textarea
+                  ref={contentInputRef}
+                  rows={4}
+                  value={curQ.content}
+                  onChange={(e) => handleUpdateCurrentQuestion({ content: e.target.value })}
+                  className="w-full text-sm text-slate-800 p-3 border border-t-0 border-slate-200 rounded-b-md focus:border-[#1677ff] outline-hidden resize-y transition"
+                  placeholder="Nhập nội dung đề bài câu hỏi tại đây..."
+                />
+              )}
             </div>
 
-            {/* Media Upload URLs */}
+            {/* Media Upload URLs & Local Pickers */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="flex items-center border border-slate-200 rounded-md overflow-hidden bg-slate-50 text-xs">
                 <span className="px-3 py-2 text-slate-500 flex items-center gap-1 shrink-0 font-medium">
@@ -658,12 +826,14 @@ export const ExamBankPage: React.FC<{ onNavigate?: (path: string) => void }> = (
                   type="text"
                   value={curQ.imageUrl || ''}
                   onChange={(e) => handleUpdateCurrentQuestion({ imageUrl: e.target.value })}
-                  placeholder="https://..."
+                  placeholder="https://... hoặc tải lên"
                   className="flex-1 px-2 py-1.5 text-xs bg-transparent outline-hidden"
                 />
                 <button
                   type="button"
-                  className="px-3 py-1.5 bg-white hover:bg-slate-100 border-l border-slate-200 text-slate-600 font-medium shrink-0 flex items-center gap-1"
+                  onClick={() => imageInputRef.current?.click()}
+                  className="px-3 py-1.5 bg-white hover:bg-slate-100 border-l border-slate-200 text-slate-600 font-medium shrink-0 flex items-center gap-1 transition"
+                  title="Chọn ảnh từ máy tính"
                 >
                   Upload ▾
                 </button>
@@ -678,94 +848,281 @@ export const ExamBankPage: React.FC<{ onNavigate?: (path: string) => void }> = (
                   type="text"
                   value={curQ.videoUrl || ''}
                   onChange={(e) => handleUpdateCurrentQuestion({ videoUrl: e.target.value })}
-                  placeholder="https://..."
+                  placeholder="https://... hoặc tải lên"
                   className="flex-1 px-2 py-1.5 text-xs bg-transparent outline-hidden"
                 />
                 <button
                   type="button"
-                  className="px-3 py-1.5 bg-white hover:bg-slate-100 border-l border-slate-200 text-slate-600 font-medium shrink-0 flex items-center gap-1"
+                  onClick={() => videoInputRef.current?.click()}
+                  className="px-3 py-1.5 bg-white hover:bg-slate-100 border-l border-slate-200 text-slate-600 font-medium shrink-0 flex items-center gap-1 transition"
+                  title="Chọn video từ máy tính"
                 >
                   Upload ▾
                 </button>
               </div>
             </div>
 
-            {/* Answer Options Configuration */}
+            {/* Image Preview Thumbnail if attached */}
+            {curQ.imageUrl && (
+              <div className="p-2 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <img
+                    src={curQ.imageUrl}
+                    alt="Preview"
+                    className="w-16 h-12 object-cover rounded border border-slate-300"
+                  />
+                  <span className="text-xs text-slate-500 font-mono truncate max-w-xs">{curQ.imageUrl}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleUpdateCurrentQuestion({ imageUrl: '' })}
+                  className="text-xs text-rose-600 hover:text-rose-700 font-semibold px-2 py-1"
+                >
+                  Xóa ảnh
+                </button>
+              </div>
+            )}
+
+            {/* Answer Options Configuration for all 7 Types */}
             <div className="space-y-3 pt-2">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-slate-700">Cấu hình đáp án</label>
+                <label className="text-xs font-bold text-slate-700">Cấu hình đáp án & Tiêu chí chấm</label>
                 <span className="text-[11px] text-slate-400">
                   {curQ.type === 'TNn'
                     ? 'Tích chọn vào các ô checkbox là đáp án đúng.'
+                    : curQ.type === 'DS'
+                    ? 'Chọn Đúng hoặc Sai làm đáp án chuẩn.'
+                    : curQ.type === 'DIEN'
+                    ? 'Nhập từ khóa hoặc thuật ngữ cần điền vào ô bên dưới.'
+                    : curQ.type === 'XEP'
+                    ? 'Sử dụng nút mũi tên ↑ ↓ để định hình thứ tự chuẩn của quy trình.'
+                    : curQ.type === 'GHEP'
+                    ? 'Nhập cặp tương ứng giữa Cột A và Cột B.'
+                    : curQ.type === 'HOTSPOT'
+                    ? 'Xác định tên vùng thao tác / tọa độ trên hình ảnh giao diện.'
                     : 'Chọn radio vào đáp án đúng duy nhất.'}
                 </span>
               </div>
 
-              <div className="space-y-2">
-                {curQ.options.map((opt, optIdx) => (
-                  <div
-                    key={opt.id || optIdx}
-                    className={`flex items-center gap-3 p-2 rounded-lg border transition ${
-                      opt.isCorrect ? 'bg-blue-50/50 border-blue-200' : 'bg-slate-50/60 border-slate-200'
-                    }`}
-                  >
-                    {/* Radio / Checkbox */}
-                    <button
-                      type="button"
-                      onClick={() => handleSetCorrectOption(optIdx)}
-                      className={`w-5 h-5 rounded-full flex items-center justify-center border transition shrink-0 ${
-                        opt.isCorrect
-                          ? 'bg-[#1677ff] border-[#1677ff] text-white'
-                          : 'border-slate-300 bg-white hover:border-blue-400'
+              {/* DẠNG 1 & 2: TN1 & TNn */}
+              {(curQ.type === 'TN1' || curQ.type === 'TNn') && (
+                <div className="space-y-2">
+                  {curQ.options.map((opt, optIdx) => (
+                    <div
+                      key={opt.id || optIdx}
+                      className={`flex items-center gap-3 p-2 rounded-lg border transition ${
+                        opt.isCorrect ? 'bg-blue-50/50 border-blue-200' : 'bg-slate-50/60 border-slate-200'
                       }`}
                     >
-                      {opt.isCorrect && <Check className="w-3 h-3 stroke-[3]" />}
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSetCorrectOption(optIdx)}
+                        className={`w-5 h-5 ${
+                          curQ.type === 'TNn' ? 'rounded-md' : 'rounded-full'
+                        } flex items-center justify-center border transition shrink-0 ${
+                          opt.isCorrect
+                            ? 'bg-[#1677ff] border-[#1677ff] text-white'
+                            : 'border-slate-300 bg-white hover:border-blue-400'
+                        }`}
+                      >
+                        {opt.isCorrect && <Check className="w-3 h-3 stroke-[3]" />}
+                      </button>
 
-                    {/* Label (A, B, C, D) */}
-                    <span className="text-xs font-bold text-slate-600 w-4 shrink-0">{opt.label}</span>
+                      <span className="text-xs font-bold text-slate-600 w-4 shrink-0">{opt.label}</span>
 
-                    {/* Option Text */}
-                    <input
-                      type="text"
-                      value={opt.text}
-                      onChange={(e) => handleUpdateOption(optIdx, { text: e.target.value })}
-                      placeholder={`Nội dung lựa chọn ${opt.label}...`}
-                      className="flex-1 text-xs text-slate-800 bg-white border border-slate-200 focus:border-[#1677ff] rounded-md px-3 py-1.5 outline-hidden transition"
-                    />
+                      <input
+                        type="text"
+                        value={opt.text}
+                        onChange={(e) => handleUpdateOption(optIdx, { text: e.target.value })}
+                        placeholder={`Nội dung lựa chọn ${opt.label}...`}
+                        className="flex-1 text-xs text-slate-800 bg-white border border-slate-200 focus:border-[#1677ff] rounded-md px-3 py-1.5 outline-hidden transition"
+                      />
 
-                    {/* Option Image URL (optional) */}
-                    <input
-                      type="text"
-                      value={opt.imageUrl || ''}
-                      onChange={(e) => handleUpdateOption(optIdx, { imageUrl: e.target.value })}
-                      placeholder="URL ảnh (tùy chọn)"
-                      className="w-40 text-xs text-slate-500 bg-white border border-slate-200 focus:border-[#1677ff] rounded-md px-2.5 py-1.5 outline-hidden transition hidden md:block"
-                    />
+                      <input
+                        type="text"
+                        value={opt.imageUrl || ''}
+                        onChange={(e) => handleUpdateOption(optIdx, { imageUrl: e.target.value })}
+                        placeholder="URL ảnh (tùy chọn)"
+                        className="w-40 text-xs text-slate-500 bg-white border border-slate-200 focus:border-[#1677ff] rounded-md px-2.5 py-1.5 outline-hidden transition hidden md:block"
+                      />
 
-                    {/* Delete Option */}
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteOption(optIdx)}
-                      className="text-slate-300 hover:text-rose-500 p-1 rounded transition shrink-0"
-                      title="Xóa lựa chọn này"
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteOption(optIdx)}
+                        className="text-slate-300 hover:text-rose-500 p-1 rounded transition shrink-0"
+                        title="Xóa lựa chọn này"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={handleAddOption}
+                    className="flex items-center gap-1.5 text-xs font-medium text-[#1677ff] hover:text-[#4096ff] bg-blue-50/50 hover:bg-blue-50 border border-dashed border-blue-200 px-3 py-1.5 rounded-md transition"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Thêm đáp án</span>
+                  </button>
+                </div>
+              )}
+
+              {/* DẠNG 3: Đ/S (Đúng / Sai) */}
+              {curQ.type === 'DS' && (
+                <div className="grid grid-cols-2 gap-4">
+                  {curQ.options.map((opt, optIdx) => (
+                    <div
+                      key={opt.id}
+                      onClick={() => handleSetCorrectOption(optIdx)}
+                      className={`p-4 rounded-xl border text-center cursor-pointer transition ${
+                        opt.isCorrect
+                          ? 'border-[#1677ff] bg-blue-50/80 shadow-xs ring-2 ring-blue-300'
+                          : 'border-slate-200 bg-slate-50/60 hover:bg-slate-100'
+                      }`}
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
+                      <span className="text-sm font-bold text-slate-800">{opt.text}</span>
+                      <p className="text-[11px] text-slate-500 mt-1">
+                        {opt.isCorrect ? '✓ Được chọn làm đáp án đúng' : 'Nhấp để đặt làm đáp án đúng'}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
 
-              {/* Add Option Button */}
-              {curQ.type !== 'DS' && (
-                <button
-                  type="button"
-                  onClick={handleAddOption}
-                  className="flex items-center gap-1.5 text-xs font-medium text-[#1677ff] hover:text-[#4096ff] bg-blue-50/50 hover:bg-blue-50 border border-dashed border-blue-200 px-3 py-1.5 rounded-md transition"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Thêm đáp án</span>
-                </button>
+              {/* DẠNG 4: DIEN (Điền từ) */}
+              {curQ.type === 'DIEN' && (
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                  <label className="text-xs font-semibold text-slate-700 block">
+                    Từ khóa / Thuật ngữ chính xác cần điền vào ô trống:
+                  </label>
+                  <input
+                    type="text"
+                    value={curQ.correctBlankWord || ''}
+                    onChange={(e) => handleUpdateCurrentQuestion({ correctBlankWord: e.target.value })}
+                    placeholder="VD: SLA 24h hoặc Chỉ số KPI"
+                    className="w-full text-xs text-slate-800 bg-white border border-slate-200 rounded-md px-3 py-2 outline-hidden focus:border-[#1677ff]"
+                  />
+                  <p className="text-[11px] text-slate-400">
+                    Thí sinh sẽ được chấm điểm đúng khi nhập chuỗi văn bản trùng khớp (không phân biệt hoa/thường).
+                  </p>
+                </div>
+              )}
+
+              {/* DẠNG 5: XEP (Sắp xếp thứ tự) */}
+              {curQ.type === 'XEP' && (
+                <div className="space-y-2">
+                  <p className="text-xs text-slate-500">
+                    Thiết lập trình tự chuẩn của các bước (Dùng mũi tên ↑ ↓ để di chuyển vị trí):
+                  </p>
+                  {curQ.options.map((opt, optIdx) => (
+                    <div
+                      key={opt.id}
+                      className="flex items-center gap-3 p-2.5 bg-slate-50 rounded-lg border border-slate-200"
+                    >
+                      <span className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 font-mono font-bold text-xs flex items-center justify-center shrink-0">
+                        {optIdx + 1}
+                      </span>
+                      <input
+                        type="text"
+                        value={opt.text}
+                        onChange={(e) => handleUpdateOption(optIdx, { text: e.target.value })}
+                        placeholder={`Mô tả bước ${optIdx + 1}...`}
+                        className="flex-1 text-xs bg-white border border-slate-200 rounded px-2.5 py-1.5 outline-hidden"
+                      />
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          disabled={optIdx === 0}
+                          onClick={() => handleMoveOptionOrder(optIdx, 'up')}
+                          className="p-1 hover:bg-slate-200 rounded disabled:opacity-30"
+                          title="Lên trên"
+                        >
+                          <ArrowUp className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={optIdx === curQ.options.length - 1}
+                          onClick={() => handleMoveOptionOrder(optIdx, 'down')}
+                          className="p-1 hover:bg-slate-200 rounded disabled:opacity-30"
+                          title="Xuống dưới"
+                        >
+                          <ArrowDown className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={handleAddOption}
+                    className="flex items-center gap-1 text-xs text-blue-600 font-medium mt-1"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Thêm bước mới
+                  </button>
+                </div>
+              )}
+
+              {/* DẠNG 6: GHEP (Ghép cặp) */}
+              {curQ.type === 'GHEP' && (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2 text-xs font-bold text-slate-600 px-1">
+                    <span>Mục ở Cột A</span>
+                    <span>Nội dung tương ứng ở Cột B</span>
+                  </div>
+                  {curQ.options.map((opt, optIdx) => (
+                    <div key={opt.id} className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        value={opt.text}
+                        onChange={(e) => handleUpdateOption(optIdx, { text: e.target.value })}
+                        placeholder={`Mục A${optIdx + 1}...`}
+                        className="text-xs bg-slate-50 border border-slate-200 rounded px-2.5 py-1.5"
+                      />
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="text"
+                          value={opt.matchTarget || ''}
+                          onChange={(e) => handleUpdateOption(optIdx, { matchTarget: e.target.value })}
+                          placeholder={`Khái niệm tương ứng B${optIdx + 1}...`}
+                          className="flex-1 text-xs bg-slate-50 border border-slate-200 rounded px-2.5 py-1.5"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteOption(optIdx)}
+                          className="text-slate-300 hover:text-rose-500 p-1"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={handleAddOption}
+                    className="flex items-center gap-1 text-xs text-blue-600 font-medium mt-1"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Thêm cặp ghép nối
+                  </button>
+                </div>
+              )}
+
+              {/* DẠNG 7: HOTSPOT (Điểm ảnh) */}
+              {curQ.type === 'HOTSPOT' && (
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                  <label className="text-xs font-semibold text-slate-700 block">
+                    Vùng thao tác chuẩn cần nhấp trên hình ảnh (Hotspot Zone):
+                  </label>
+                  <input
+                    type="text"
+                    value={curQ.hotspotZone || ''}
+                    onChange={(e) => handleUpdateCurrentQuestion({ hotspotZone: e.target.value })}
+                    placeholder="VD: Nút 'Ký duyệt SLA' trên thanh công cụ trên cùng"
+                    className="w-full text-xs text-slate-800 bg-white border border-slate-200 rounded-md px-3 py-2 outline-hidden focus:border-[#1677ff]"
+                  />
+                  <p className="text-[11px] text-slate-400">
+                    Vui lòng tải lên ảnh giao diện quy trình ở ô "URL ảnh" bên trên để thí sinh quan sát và nhấp chọn.
+                  </p>
+                </div>
               )}
             </div>
           </main>
@@ -874,8 +1231,17 @@ export const ExamBankPage: React.FC<{ onNavigate?: (path: string) => void }> = (
                     {typeCfg.code}
                   </span>
                   <span className="font-bold text-slate-700">Câu {activeQuestionIdx + 1}:</span>
-                  <span className="text-slate-600">{curQ.content || 'Nội dung câu hỏi mẫu'}</span>
+                  <div
+                    className="text-slate-600 prose prose-sm max-w-none"
+                    dangerouslySetInnerHTML={{ __html: curQ.content || 'Nội dung câu hỏi mẫu' }}
+                  />
                 </div>
+
+                {curQ.imageUrl && (
+                  <div className="my-2">
+                    <img src={curQ.imageUrl} alt="Diagram" className="max-h-52 rounded border border-slate-200 mx-auto" />
+                  </div>
+                )}
 
                 <div className="space-y-2 pl-4">
                   {curQ.options.map((opt) => (

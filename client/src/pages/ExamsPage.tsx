@@ -25,8 +25,13 @@ import {
   ArrowLeft,
   Layers,
   Inbox,
+  ArrowUp,
+  ArrowDown,
+  Target,
+  FileText,
 } from 'lucide-react';
 import { api } from '../api/client.js';
+import { ExcelImportModal } from '../components/common/ExcelImportModal.js';
 
 interface CampaignParticipant {
   userId: string;
@@ -79,11 +84,13 @@ interface ExamQuestionItem {
   content: string;
   imageUrl?: string;
   videoUrl?: string;
-  options: { id: string; label: string; text: string; isCorrect?: boolean }[];
+  options: { id: string; label: string; text: string; isCorrect?: boolean; matchTarget?: string }[];
   points: number;
   feedbackCorrect?: string;
   feedbackWrong?: string;
   explanation?: string;
+  correctBlankWord?: string;
+  hotspotZone?: string;
 }
 
 const SAMPLE_EMPLOYEES: CampaignParticipant[] = [
@@ -156,6 +163,9 @@ export const ExamsPage: React.FC<{ onNavigate?: (path: string) => void }> = ({ o
   const [selectAllEmp, setSelectAllEmp] = useState(false);
   const [selectedParticipants, setSelectedParticipants] = useState<CampaignParticipant[]>([]);
   const [employeeDropdownOpen, setEmployeeDropdownOpen] = useState(false);
+
+  // Excel Import Modal state
+  const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
 
   // Active Exam Taking Player state
   const [activeTakingCampaign, setActiveTakingCampaign] = useState<ExamCampaign | null>(null);
@@ -258,6 +268,24 @@ export const ExamsPage: React.FC<{ onNavigate?: (path: string) => void }> = ({ o
     setSelectedParticipants(selectedParticipants.filter((p) => p.userId !== userId));
   };
 
+  // Excel Import Handler
+  const handleConfirmExcelImport = async (rows: any[]) => {
+    const mapped: CampaignParticipant[] = rows.map((r, i) => ({
+      userId: `import-${Date.now()}-${i}`,
+      fullName: r.fullName || r['Họ và tên'] || `Thí sinh ${i + 1}`,
+      email: r.email || r['Email'] || `candidate${i + 1}@tinykpi.com`,
+      position: r.position || r['Chức vụ'] || 'Chuyên viên Vận hành',
+      department: r.department || r['Bộ phận'] || 'Phòng Ban Mới',
+      status: 'NOT_STARTED',
+    }));
+    setSelectedParticipants((prev) => [...prev, ...mapped]);
+    return {
+      success: true,
+      count: mapped.length,
+      message: `Đã nhập thành công ${mapped.length} thí sinh vào danh sách dự thi!`,
+    };
+  };
+
   const handleSaveCampaign = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title.trim()) {
@@ -307,6 +335,37 @@ export const ExamsPage: React.FC<{ onNavigate?: (path: string) => void }> = ({ o
       ...prev,
       [qId]: answerVal,
     }));
+  };
+
+  // Multi-select toggle for TNn
+  const handleMultiAnswerToggle = (qId: string, optId: string) => {
+    const currentList: string[] = Array.isArray(userAnswers[qId]) ? [...userAnswers[qId]] : [];
+    if (currentList.includes(optId)) {
+      handleAnswerSelect(
+        qId,
+        currentList.filter((id) => id !== optId)
+      );
+    } else {
+      handleAnswerSelect(qId, [...currentList, optId]);
+    }
+  };
+
+  // Reorder steps for XEP type
+  const handleReorderStep = (qId: string, currentOptions: any[], idx: number, direction: 'up' | 'down') => {
+    const items = [...currentOptions];
+    if (direction === 'up' && idx > 0) {
+      const temp = items[idx];
+      items[idx] = items[idx - 1];
+      items[idx - 1] = temp;
+    } else if (direction === 'down' && idx < items.length - 1) {
+      const temp = items[idx];
+      items[idx] = items[idx + 1];
+      items[idx + 1] = temp;
+    }
+    handleAnswerSelect(
+      qId,
+      items.map((it) => it.id)
+    );
   };
 
   const handleSubmitExam = async () => {
@@ -422,7 +481,7 @@ export const ExamsPage: React.FC<{ onNavigate?: (path: string) => void }> = ({ o
       );
     }
 
-    // ACTIVE TEST TAKING VIEW
+    // ACTIVE TEST TAKING VIEW WITH 7 QUESTION TYPES
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col font-sans select-none animate-fadeIn">
         {/* Top Sticky Test Bar */}
@@ -475,9 +534,26 @@ export const ExamsPage: React.FC<{ onNavigate?: (path: string) => void }> = ({ o
             <div className="space-y-6">
               {/* Question Index Badge */}
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <span className="text-xs font-bold text-[#1677ff] bg-blue-50 px-2.5 py-1 rounded">
-                  Câu {currentQIdx + 1} / {totalQ}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-[#1677ff] bg-blue-50 px-2.5 py-1 rounded">
+                    Câu {currentQIdx + 1} / {totalQ}
+                  </span>
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600">
+                    {currentQ.type === 'TNn'
+                      ? 'Trắc nghiệm (nhiều đáp án)'
+                      : currentQ.type === 'DS'
+                      ? 'Đúng / Sai'
+                      : currentQ.type === 'DIEN'
+                      ? 'Điền từ vào chỗ trống'
+                      : currentQ.type === 'XEP'
+                      ? 'Sắp xếp thứ tự các bước'
+                      : currentQ.type === 'GHEP'
+                      ? 'Ghép cặp khái niệm'
+                      : currentQ.type === 'HOTSPOT'
+                      ? 'Xác định điểm ảnh (Hotspot)'
+                      : 'Trắc nghiệm (1 đáp án)'}
+                  </span>
+                </div>
                 <span className="text-xs text-slate-400 font-mono">Điểm: {currentQ.points || 1} đ</span>
               </div>
 
@@ -486,35 +562,218 @@ export const ExamsPage: React.FC<{ onNavigate?: (path: string) => void }> = ({ o
                 <h2 className="text-base font-semibold text-slate-800 leading-relaxed">
                   {currentQ.content || currentQ.title}
                 </h2>
+                {currentQ.imageUrl && (
+                  <div className="mt-4 p-2 bg-slate-50 border border-slate-200 rounded-lg text-center">
+                    <img src={currentQ.imageUrl} alt="SOP Diagram" className="max-h-64 mx-auto rounded" />
+                  </div>
+                )}
               </div>
 
-              {/* Options */}
-              <div className="space-y-3 pt-2">
-                {currentQ.options.map((opt) => {
-                  const isSelected = userAnswers[currentQ.id] === opt.id;
-                  return (
-                    <div
-                      key={opt.id}
-                      onClick={() => handleAnswerSelect(currentQ.id, opt.id)}
-                      className={`flex items-center gap-3.5 p-3.5 rounded-xl border cursor-pointer transition ${
-                        isSelected
-                          ? 'border-[#1677ff] bg-blue-50/60 shadow-xs'
-                          : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/80 bg-white'
-                      }`}
-                    >
+              {/* DYNAMIC ANSWER INTERACTION FOR ALL 7 TYPES */}
+
+              {/* 1. TN1: Single Choice Radio */}
+              {(!currentQ.type || currentQ.type === 'TN1') && (
+                <div className="space-y-3 pt-2">
+                  {currentQ.options.map((opt) => {
+                    const isSelected = userAnswers[currentQ.id] === opt.id;
+                    return (
                       <div
-                        className={`w-5 h-5 rounded-full flex items-center justify-center border transition shrink-0 ${
-                          isSelected ? 'bg-[#1677ff] border-[#1677ff] text-white' : 'border-slate-300 bg-white'
+                        key={opt.id}
+                        onClick={() => handleAnswerSelect(currentQ.id, opt.id)}
+                        className={`flex items-center gap-3.5 p-3.5 rounded-xl border cursor-pointer transition ${
+                          isSelected
+                            ? 'border-[#1677ff] bg-blue-50/60 shadow-xs'
+                            : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/80 bg-white'
                         }`}
                       >
-                        {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                        <div
+                          className={`w-5 h-5 rounded-full flex items-center justify-center border transition shrink-0 ${
+                            isSelected ? 'bg-[#1677ff] border-[#1677ff] text-white' : 'border-slate-300 bg-white'
+                          }`}
+                        >
+                          {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                        </div>
+                        <span className="text-xs font-bold text-slate-700">{opt.label}.</span>
+                        <span className="text-xs text-slate-800 font-medium">{opt.text}</span>
                       </div>
-                      <span className="text-xs font-bold text-slate-700">{opt.label}.</span>
-                      <span className="text-xs text-slate-800 font-medium">{opt.text}</span>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* 2. TNn: Multi Choice Checkbox */}
+              {currentQ.type === 'TNn' && (
+                <div className="space-y-3 pt-2">
+                  <p className="text-xs text-slate-500 italic">Chọn một hoặc nhiều đáp án bạn cho là chính xác:</p>
+                  {currentQ.options.map((opt) => {
+                    const selectedList: string[] = Array.isArray(userAnswers[currentQ.id]) ? userAnswers[currentQ.id] : [];
+                    const isSelected = selectedList.includes(opt.id);
+                    return (
+                      <div
+                        key={opt.id}
+                        onClick={() => handleMultiAnswerToggle(currentQ.id, opt.id)}
+                        className={`flex items-center gap-3.5 p-3.5 rounded-xl border cursor-pointer transition ${
+                          isSelected
+                            ? 'border-[#1677ff] bg-blue-50/60 shadow-xs'
+                            : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/80 bg-white'
+                        }`}
+                      >
+                        <div
+                          className={`w-5 h-5 rounded-md flex items-center justify-center border transition shrink-0 ${
+                            isSelected ? 'bg-[#1677ff] border-[#1677ff] text-white' : 'border-slate-300 bg-white'
+                          }`}
+                        >
+                          {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                        </div>
+                        <span className="text-xs font-bold text-slate-700">{opt.label}.</span>
+                        <span className="text-xs text-slate-800 font-medium">{opt.text}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* 3. DS: True / False */}
+              {currentQ.type === 'DS' && (
+                <div className="grid grid-cols-2 gap-4 pt-2">
+                  <div
+                    onClick={() => handleAnswerSelect(currentQ.id, 'opt-true')}
+                    className={`p-6 rounded-xl border text-center cursor-pointer transition ${
+                      userAnswers[currentQ.id] === 'opt-true'
+                        ? 'border-emerald-500 bg-emerald-50 text-emerald-800 shadow-md ring-2 ring-emerald-300'
+                        : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                    }`}
+                  >
+                    <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
+                    <span className="text-base font-bold">ĐÚNG</span>
+                    <p className="text-[11px] text-slate-500 mt-1">Nhận định theo đúng chuẩn SOP</p>
+                  </div>
+
+                  <div
+                    onClick={() => handleAnswerSelect(currentQ.id, 'opt-false')}
+                    className={`p-6 rounded-xl border text-center cursor-pointer transition ${
+                      userAnswers[currentQ.id] === 'opt-false'
+                        ? 'border-rose-500 bg-rose-50 text-rose-800 shadow-md ring-2 ring-rose-300'
+                        : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                    }`}
+                  >
+                    <XCircle className="w-8 h-8 text-rose-600 mx-auto mb-2" />
+                    <span className="text-base font-bold">SAI</span>
+                    <p className="text-[11px] text-slate-500 mt-1">Nhận định vi phạm chuẩn SOP</p>
+                  </div>
+                </div>
+              )}
+
+              {/* 4. DIEN: Fill in the Blank */}
+              {currentQ.type === 'DIEN' && (
+                <div className="p-5 bg-slate-50 rounded-xl border border-slate-200 space-y-3 pt-2">
+                  <label className="text-xs font-bold text-slate-700 block">
+                    Nhập câu trả lời hoặc từ khóa còn thiếu:
+                  </label>
+                  <input
+                    type="text"
+                    value={userAnswers[currentQ.id] || ''}
+                    onChange={(e) => handleAnswerSelect(currentQ.id, e.target.value)}
+                    placeholder="Nhập câu trả lời của bạn..."
+                    className="w-full p-3 bg-white border border-slate-300 rounded-lg text-sm text-slate-800 focus:border-[#1677ff] outline-hidden shadow-2xs font-medium"
+                  />
+                  <p className="text-[11px] text-slate-400">
+                    Gợi ý: Điền đúng từ ngữ chuyên môn hoặc thông số quy định trong quy trình.
+                  </p>
+                </div>
+              )}
+
+              {/* 5. XEP: Order Steps Sequence */}
+              {currentQ.type === 'XEP' && (
+                <div className="space-y-3 pt-2">
+                  <p className="text-xs text-slate-500">
+                    Sắp xếp lại trình tự các bước theo đúng diễn tiến của quy trình (Dùng nút ↑ ↓):
+                  </p>
+                  <div className="space-y-2">
+                    {currentQ.options.map((opt, optIdx) => (
+                      <div
+                        key={opt.id}
+                        className="flex items-center gap-3 p-3 bg-white rounded-lg border border-slate-200 shadow-2xs"
+                      >
+                        <span className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 font-mono font-bold text-xs flex items-center justify-center shrink-0">
+                          {optIdx + 1}
+                        </span>
+                        <span className="flex-1 text-xs text-slate-800 font-medium">{opt.text}</span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            disabled={optIdx === 0}
+                            onClick={() => handleReorderStep(currentQ.id, currentQ.options, optIdx, 'up')}
+                            className="p-1 hover:bg-slate-100 rounded border border-slate-200 disabled:opacity-30"
+                            title="Lên trên"
+                          >
+                            <ArrowUp className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={optIdx === currentQ.options.length - 1}
+                            onClick={() => handleReorderStep(currentQ.id, currentQ.options, optIdx, 'down')}
+                            className="p-1 hover:bg-slate-100 rounded border border-slate-200 disabled:opacity-30"
+                            title="Xuống dưới"
+                          >
+                            <ArrowDown className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 6. GHEP: Match Pairs */}
+              {currentQ.type === 'GHEP' && (
+                <div className="space-y-3 pt-2">
+                  <p className="text-xs text-slate-500">Ghép nối các mục ở Cột A với nội dung thích hợp ở Cột B:</p>
+                  <div className="space-y-2">
+                    {currentQ.options.map((opt) => (
+                      <div key={opt.id} className="grid grid-cols-2 gap-3 items-center p-2.5 bg-slate-50 rounded-lg border border-slate-200">
+                        <div className="text-xs font-semibold text-slate-700">{opt.text}</div>
+                        <select
+                          value={userAnswers[currentQ.id]?.[opt.id] || ''}
+                          onChange={(e) => {
+                            const prev = userAnswers[currentQ.id] || {};
+                            handleAnswerSelect(currentQ.id, { ...prev, [opt.id]: e.target.value });
+                          }}
+                          className="text-xs p-1.5 bg-white border border-slate-200 rounded outline-hidden focus:border-[#1677ff]"
+                        >
+                          <option value="">-- Chọn ghép nối --</option>
+                          {currentQ.options.map((targetOpt) => (
+                            <option key={targetOpt.id} value={targetOpt.matchTarget || targetOpt.text}>
+                              {targetOpt.matchTarget || targetOpt.text}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 7. HOTSPOT: Click Target Zone */}
+              {currentQ.type === 'HOTSPOT' && (
+                <div className="space-y-3 pt-2">
+                  <div
+                    onClick={() => handleAnswerSelect(currentQ.id, 'hotspot-confirmed')}
+                    className={`p-4 rounded-xl border text-center cursor-pointer transition ${
+                      userAnswers[currentQ.id] === 'hotspot-confirmed'
+                        ? 'border-rose-500 bg-rose-50/80 ring-2 ring-rose-300'
+                        : 'border-slate-200 bg-slate-50 hover:bg-slate-100'
+                    }`}
+                  >
+                    <Target className="w-8 h-8 text-rose-600 mx-auto mb-1" />
+                    <p className="text-xs font-bold text-slate-800">
+                      {userAnswers[currentQ.id] === 'hotspot-confirmed'
+                        ? '✓ Đã nhấp chọn định vị vùng thao tác trên hình ảnh'
+                        : 'Nhấp chuột vào hình ảnh bên trên để định vị vùng thao tác'}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Navigation buttons at bottom */}
@@ -933,9 +1192,10 @@ export const ExamsPage: React.FC<{ onNavigate?: (path: string) => void }> = ({ o
                 <span className="font-bold text-xs">Người tham gia</span>
                 <button
                   type="button"
-                  onClick={() => alert('Đã sẵn sàng chức năng Import thí sinh từ file mẫu .xlsx!')}
+                  onClick={() => setIsExcelModalOpen(true)}
                   className="bg-white text-slate-800 hover:bg-slate-100 text-xs font-semibold px-3 py-1 rounded shadow-2xs flex items-center gap-1"
                 >
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
                   <span>Import Excel</span>
                   <span className="text-[10px]">▼</span>
                 </button>
@@ -1100,6 +1360,50 @@ export const ExamsPage: React.FC<{ onNavigate?: (path: string) => void }> = ({ o
           </div>
         </div>
       )}
+
+      {/* EXCEL IMPORT MODAL */}
+      <ExcelImportModal
+        isOpen={isExcelModalOpen}
+        onClose={() => setIsExcelModalOpen(false)}
+        title="Nhập danh sách Thí sinh dự thi từ Excel (.xlsx)"
+        templateFileName="Mau_Danh_Sach_Thi_Sinh_TinyKPI.xlsx"
+        templateHeaders={['Họ và tên', 'Email', 'Chức vụ', 'Bộ phận']}
+        exampleRows={[
+          {
+            'Họ và tên': 'Nguyễn Văn An',
+            Email: 'an.nguyen@tinykpi.com',
+            'Chức vụ': 'Chuyên viên Vận hành SOP',
+            'Bộ phận': 'Phòng Quản lý Quy trình',
+          },
+          {
+            'Họ và tên': 'Trần Mai Hoa',
+            Email: 'hoa.tran@tinykpi.com',
+            'Chức vụ': 'Kế toán viên Mua sắm',
+            'Bộ phận': 'Phòng Tài chính - Kế toán',
+          },
+        ]}
+        headerMapping={{
+          'Họ và tên': 'fullName',
+          Email: 'email',
+          'Chức vụ': 'position',
+          'Bộ phận': 'department',
+        }}
+        requiredFields={[
+          { key: 'fullName', label: 'Họ và tên' },
+          { key: 'email', label: 'Email' },
+        ]}
+        previewColumns={[
+          { key: 'fullName', label: 'Họ & tên' },
+          { key: 'email', label: 'Email' },
+          { key: 'position', label: 'Chức vụ' },
+          { key: 'department', label: 'Bộ phận' },
+        ]}
+        onConfirmImport={handleConfirmExcelImport}
+        notes={[
+          'Hệ thống tự động bỏ qua các bản ghi trùng lặp email.',
+          'Các thí sinh được nhập từ file Excel sẽ hiển thị trực tiếp tại bảng Người tham gia bên dưới.',
+        ]}
+      />
     </div>
   );
 };
