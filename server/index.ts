@@ -56,6 +56,7 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api/calendar', calendarRoutes);
 app.use('/api/monitoring', monitoringRoutes);
 app.use('/api/exams', trainingRoutes);
+app.use('/api/exam-bank', trainingRoutes);
 app.use('/api/training', trainingRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/notifications', notificationRoutes);

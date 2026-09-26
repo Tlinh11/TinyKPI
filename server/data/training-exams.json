@@ -1,0 +1,144 @@
+{
+  "questionSets": [
+    {
+      "id": "qs-test-1",
+      "name": "Test",
+      "processId": "proc-no1",
+      "processTitle": "No1 - Quy trình thử nghiệm",
+      "version": "Draft mặc định",
+      "questionCount": 1,
+      "totalPoints": 1,
+      "questions": [
+        {
+          "id": "q-1",
+          "type": "TN1",
+          "typeLabel": "Trắc nghiệm (1 đáp án)",
+          "title": "1. Thử nghiệm",
+          "content": "Thử nghiệm",
+          "imageUrl": "",
+          "videoUrl": "",
+          "points": 1,
+          "options": [
+            {
+              "id": "opt-a",
+              "key": "A",
+              "text": "A",
+              "isCorrect": false
+            },
+            {
+              "id": "opt-b",
+              "key": "B",
+              "text": "B",
+              "isCorrect": false
+            },
+            {
+              "id": "opt-c",
+              "key": "C",
+              "text": "C",
+              "isCorrect": true
+            },
+            {
+              "id": "opt-d",
+              "key": "D",
+              "text": "D",
+              "isCorrect": false
+            }
+          ],
+          "correctAnswer": "opt-c",
+          "feedbackCorrect": "",
+          "feedbackWrong": "",
+          "explanation": ""
+        }
+      ],
+      "createdAt": "2026-09-26T00:00:00.000Z",
+      "updatedAt": "2026-09-26T00:00:00.000Z"
+    }
+  ],
+  "tests": [
+    {
+      "id": "test-1",
+      "title": "Test",
+      "status": "OPEN",
+      "processId": "proc-no1",
+      "processTitle": "No1 - Quy trình thử nghiệm",
+      "questionSetId": "qs-test-1",
+      "questionSetTitle": "Test",
+      "description": "Đề thi trắc nghiệm sát hạch quy trình thử nghiệm số 1.",
+      "questionCount": 1,
+      "durationMinutes": 30,
+      "maxAttempts": 0,
+      "maxScore": 100,
+      "passScore": 70,
+      "shuffleQuestions": true,
+      "displayMode": "ALL_STEPS",
+      "passingNote": "Học viên cần đạt tối thiểu 70/100 điểm để hoàn thành.",
+      "invitedCount": 0,
+      "createdAt": "2026-09-26T00:00:00.000Z",
+      "updatedAt": "2026-09-26T00:00:00.000Z"
+    }
+  ],
+  "sessions": [
+    {
+      "id": "session-1",
+      "title": "Đợt 1: Sát hạch Quy trình Thử nghiệm No1",
+      "testId": "test-1",
+      "testTitle": "Test",
+      "processId": "proc-no1",
+      "processTitle": "No1 - Quy trình thử nghiệm",
+      "description": "Sát hạch quy trình thử nghiệm dành cho toàn bộ nhân sự khối vận hành và kiểm soát chất lượng.",
+      "inviteDate": "26/09/2026",
+      "startDate": "26/09/2026",
+      "endDate": "03/10/2026",
+      "reminder1Date": "",
+      "reminder2Date": "",
+      "reminder3Date": "",
+      "status": "OPEN",
+      "participants": [
+        {
+          "id": "p-1",
+          "fullName": "Nguyễn Thuận Khánh",
+          "position": "Tổng Giám Đốc",
+          "department": "Ban Giám Đốc",
+          "status": "NOT_STARTED"
+        },
+        {
+          "id": "p-2",
+          "fullName": "Trần Văn Hoàng",
+          "position": "Trưởng phòng Kỹ thuật",
+          "department": "Phòng Kỹ thuật & Công nghệ",
+          "status": "NOT_STARTED"
+        }
+      ],
+      "createdAt": "2026-09-26T00:00:00.000Z",
+      "updatedAt": "2026-09-26T00:00:00.000Z"
+    }
+  ],
+  "courses": [
+    {
+      "id": "course-1",
+      "title": "Quy trình thử nghiệm chuẩn TopKPI",
+      "code": "TC-SOP-01",
+      "category": "Quy trình Lõi",
+      "processTitle": "No1 - Quy trình thử nghiệm",
+      "version": "Draft mặc định",
+      "status": "DRAFT",
+      "progress": 0,
+      "description": "Giáo trình đào tạo các bước triển khai, kiểm thử và nghiệm thu trong chu trình quản trị vận hành.",
+      "duration": "~5 phút",
+      "lessons": [
+        {
+          "id": "les-1",
+          "order": 1,
+          "title": "Tổng quan về Quy trình thử nghiệm",
+          "type": "TEXT",
+          "typeLabel": "Văn bản",
+          "duration": "~5 phút",
+          "content": "### 1. Mục tiêu bài học\n- Nắm rõ chu trình triển khai thử nghiệm chuẩn TopKPI.\n- Hiểu được các tiêu chuẩn đánh giá SLA và ngưỡng chấp nhận chất lượng.\n\n### 2. Các bước cốt lõi\n1. **Tiếp nhận yêu cầu**: Phân tích phạm vi nghiệp vụ và phòng ban phối hợp.\n2. **Thiết lập chỉ số kiểm thử**: Gán trọng số và thời lượng xử lý.\n3. **Thực thi và giám sát**: Báo cáo sự cố tức thời và nghiệm thu kết quả.\n\n### 3. Ghi nhớ quan trọng\nTất cả các tác vụ trong quy trình thử nghiệm đều được ghi nhận nhật ký kiểm toán và tính toán thẻ điểm BSC theo thời gian thực."
+        }
+      ],
+      "createdAt": "2026-09-26T00:00:00.000Z",
+      "updatedAt": "2026-09-26T00:00:00.000Z"
+    }
+  ],
+  "completedLessonsByUser": {}
+}
