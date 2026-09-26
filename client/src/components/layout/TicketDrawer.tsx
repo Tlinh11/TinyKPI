@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   LifeBuoy,
   X,
@@ -17,7 +18,8 @@ import {
   ChevronRight,
   Filter,
   Trash2,
-  Check
+  Check,
+  RefreshCw
 } from 'lucide-react';
 import { apiClient } from '../../api/client.js';
 import { useAuth } from '../../context/AuthContext.js';
@@ -83,6 +85,17 @@ export const TicketDrawer: React.FC<TicketDrawerProps> = ({ isOpen, onClose }) =
     }
   }, [isOpen]);
 
+  // Close on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   const handleSubmitTicket = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !description.trim()) {
@@ -114,11 +127,12 @@ export const TicketDrawer: React.FC<TicketDrawerProps> = ({ isOpen, onClose }) =
       setCategory('BUG');
       setPriority('MEDIUM');
       loadTickets();
+
       // Switch to history tab after 1.5s
       setTimeout(() => {
         setActiveTab('HISTORY');
         setNotification(null);
-      }, 1800);
+      }, 1600);
     } catch (err: any) {
       setNotification({ type: 'error', message: err.message || 'Lỗi gửi Ticket hỗ trợ' });
     } finally {
@@ -183,14 +197,30 @@ export const TicketDrawer: React.FC<TicketDrawerProps> = ({ isOpen, onClose }) =
   const getStatusBadge = (st: SupportTicket['status']) => {
     switch (st) {
       case 'OPEN':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">Chờ tiếp nhận</span>;
+        return (
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+            Chờ tiếp nhận
+          </span>
+        );
       case 'IN_PROGRESS':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 animate-pulse">Đang xử lý</span>;
+        return (
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 animate-pulse">
+            Đang xử lý
+          </span>
+        );
       case 'RESOLVED':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">Đã giải quyết</span>;
+        return (
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+            Đã giải quyết
+          </span>
+        );
       case 'CLOSED':
       default:
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">Đã đóng</span>;
+        return (
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+            Đã đóng
+          </span>
+        );
     }
   };
 
@@ -201,19 +231,19 @@ export const TicketDrawer: React.FC<TicketDrawerProps> = ({ isOpen, onClose }) =
     return true;
   });
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 overflow-hidden animate-fadeIn">
       {/* Backdrop */}
       <div
         onClick={onClose}
-        className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity"
+        className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity cursor-pointer"
       />
 
       {/* Slide-over Drawer */}
-      <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
-        <div className="w-screen max-w-lg bg-white shadow-2xl border-l border-slate-200 flex flex-col justify-between">
+      <div className="fixed inset-y-0 right-0 max-w-full flex pl-10 z-50">
+        <div className="w-screen max-w-lg bg-white shadow-2xl border-l border-slate-200 flex flex-col justify-between h-full">
           {/* Header */}
-          <div className="p-5 border-b border-slate-100 bg-slate-50/70">
+          <div className="p-5 border-b border-slate-100 bg-slate-50/80">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 text-white flex items-center justify-center shadow-md shadow-blue-200">
@@ -227,7 +257,8 @@ export const TicketDrawer: React.FC<TicketDrawerProps> = ({ isOpen, onClose }) =
 
               <button
                 onClick={onClose}
-                className="w-8 h-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition shadow-2xs"
+                className="w-8 h-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition shadow-2xs cursor-pointer"
+                title="Đóng (Esc)"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -240,7 +271,7 @@ export const TicketDrawer: React.FC<TicketDrawerProps> = ({ isOpen, onClose }) =
                   setActiveTab('NEW');
                   setNotification(null);
                 }}
-                className={`flex-1 py-1.5 rounded-lg text-center transition flex items-center justify-center gap-1.5 ${
+                className={`flex-1 py-1.5 rounded-lg text-center transition flex items-center justify-center gap-1.5 cursor-pointer ${
                   activeTab === 'NEW'
                     ? 'bg-white text-[#1677ff] shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
@@ -256,7 +287,7 @@ export const TicketDrawer: React.FC<TicketDrawerProps> = ({ isOpen, onClose }) =
                   setNotification(null);
                   loadTickets();
                 }}
-                className={`flex-1 py-1.5 rounded-lg text-center transition flex items-center justify-center gap-1.5 ${
+                className={`flex-1 py-1.5 rounded-lg text-center transition flex items-center justify-center gap-1.5 cursor-pointer ${
                   activeTab === 'HISTORY'
                     ? 'bg-white text-[#1677ff] shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
@@ -271,7 +302,7 @@ export const TicketDrawer: React.FC<TicketDrawerProps> = ({ isOpen, onClose }) =
                   setActiveTab('HOTLINE');
                   setNotification(null);
                 }}
-                className={`flex-1 py-1.5 rounded-lg text-center transition flex items-center justify-center gap-1.5 ${
+                className={`flex-1 py-1.5 rounded-lg text-center transition flex items-center justify-center gap-1.5 cursor-pointer ${
                   activeTab === 'HOTLINE'
                     ? 'bg-white text-[#1677ff] shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
@@ -321,7 +352,7 @@ export const TicketDrawer: React.FC<TicketDrawerProps> = ({ isOpen, onClose }) =
                         key={item.id}
                         type="button"
                         onClick={() => setCategory(item.id as any)}
-                        className={`p-2.5 rounded-xl border text-left transition ${
+                        className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
                           category === item.id
                             ? 'border-blue-500 bg-blue-50/60 ring-2 ring-blue-100'
                             : 'border-slate-200 hover:border-slate-300 bg-white'
@@ -343,7 +374,7 @@ export const TicketDrawer: React.FC<TicketDrawerProps> = ({ isOpen, onClose }) =
                     <select
                       value={priority}
                       onChange={(e) => setPriority(e.target.value as any)}
-                      className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg outline-none focus:border-[#1677ff] bg-white font-medium"
+                      className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg outline-none focus:border-[#1677ff] focus:ring-2 focus:ring-blue-50 bg-white font-medium cursor-pointer"
                     >
                       <option value="URGENT">🔴 Khẩn cấp (SLA 1-2h)</option>
                       <option value="HIGH">🟠 Cao (SLA 4h)</option>
@@ -359,7 +390,7 @@ export const TicketDrawer: React.FC<TicketDrawerProps> = ({ isOpen, onClose }) =
                     <select
                       value={moduleName}
                       onChange={(e) => setModuleName(e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg outline-none focus:border-[#1677ff] bg-white font-medium"
+                      className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg outline-none focus:border-[#1677ff] focus:ring-2 focus:ring-blue-50 bg-white font-medium cursor-pointer"
                     >
                       <option value="Chiến lược BSC (5 Bước)">Chiến lược BSC (5 Bước)</option>
                       <option value="Quy trình Master Process">Quy trình Master Process</option>
@@ -384,7 +415,7 @@ export const TicketDrawer: React.FC<TicketDrawerProps> = ({ isOpen, onClose }) =
                     onChange={(e) => setTitle(e.target.value)}
                     required
                     placeholder="VD: Không tính toán được điểm hoàn thành KPI tại viễn cảnh Tài chính..."
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg outline-none focus:border-[#1677ff]"
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg outline-none focus:border-[#1677ff] focus:ring-2 focus:ring-blue-50 transition"
                   />
                 </div>
 
@@ -399,7 +430,7 @@ export const TicketDrawer: React.FC<TicketDrawerProps> = ({ isOpen, onClose }) =
                     required
                     rows={4}
                     placeholder="Mô tả cụ thể các bước thực hiện, thông báo lỗi nếu có, hoặc các chỉ số KPI cần chuyên gia TOPPION hỗ trợ..."
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg outline-none focus:border-[#1677ff] resize-none"
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg outline-none focus:border-[#1677ff] focus:ring-2 focus:ring-blue-50 resize-none transition"
                   />
                 </div>
 
@@ -417,9 +448,13 @@ export const TicketDrawer: React.FC<TicketDrawerProps> = ({ isOpen, onClose }) =
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-2.5 rounded-xl bg-[#1677ff] hover:bg-[#4096ff] text-white font-semibold text-xs transition shadow-md shadow-blue-200 flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="w-full py-2.5 rounded-xl bg-[#1677ff] hover:bg-[#4096ff] text-white font-semibold text-xs transition shadow-md shadow-blue-200 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                 >
-                  <Send className="w-4 h-4" />
+                  {isSubmitting ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
                   <span>{isSubmitting ? 'Đang gửi Ticket...' : 'Gửi Phiếu Yêu Cầu Hỗ Trợ'}</span>
                 </button>
               </form>
@@ -439,7 +474,7 @@ export const TicketDrawer: React.FC<TicketDrawerProps> = ({ isOpen, onClose }) =
                     <button
                       key={tab.id}
                       onClick={() => setStatusFilter(tab.id as any)}
-                      className={`px-2.5 py-1 rounded-full shrink-0 transition ${
+                      className={`px-2.5 py-1 rounded-full shrink-0 transition cursor-pointer ${
                         statusFilter === tab.id
                           ? 'bg-slate-900 text-white'
                           : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -451,7 +486,10 @@ export const TicketDrawer: React.FC<TicketDrawerProps> = ({ isOpen, onClose }) =
                 </div>
 
                 {isLoading ? (
-                  <div className="py-12 text-center text-xs text-slate-400">Đang tải lịch sử Ticket...</div>
+                  <div className="py-12 text-center text-xs text-slate-400 flex flex-col items-center justify-center gap-2">
+                    <RefreshCw className="w-5 h-5 animate-spin text-blue-500" />
+                    <span>Đang tải lịch sử Ticket...</span>
+                  </div>
                 ) : filteredTickets.length === 0 ? (
                   <div className="py-12 text-center">
                     <FileQuestion className="w-8 h-8 text-slate-300 mx-auto mb-2" />
@@ -471,7 +509,7 @@ export const TicketDrawer: React.FC<TicketDrawerProps> = ({ isOpen, onClose }) =
                         {/* Top row */}
                         <div className="flex items-center justify-between text-xs">
                           <div className="flex items-center gap-2">
-                            <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">
+                            <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
                               {t.code}
                             </span>
                             <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${priMeta.color}`}>
@@ -482,7 +520,7 @@ export const TicketDrawer: React.FC<TicketDrawerProps> = ({ isOpen, onClose }) =
                             {getStatusBadge(t.status)}
                             <button
                               onClick={() => handleDeleteTicket(t.id)}
-                              className="text-slate-300 hover:text-red-500 p-0.5 transition"
+                              className="text-slate-300 hover:text-red-500 p-0.5 transition cursor-pointer"
                               title="Xóa Ticket"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -496,8 +534,8 @@ export const TicketDrawer: React.FC<TicketDrawerProps> = ({ isOpen, onClose }) =
                           <p className="text-[11px] text-slate-600 mt-1 line-clamp-3 leading-relaxed">
                             {t.description}
                           </p>
-                          <div className="mt-1 flex items-center gap-2 text-[10px] text-slate-400">
-                            <span>Phân hệ: <b>{t.module}</b></span>
+                          <div className="mt-1.5 flex items-center gap-2 text-[10px] text-slate-400 flex-wrap">
+                            <span>Phân hệ: <b className="text-slate-600">{t.module}</b></span>
                             <span>•</span>
                             <span>{new Date(t.createdAt).toLocaleDateString('vi-VN')}</span>
                           </div>
@@ -523,7 +561,7 @@ export const TicketDrawer: React.FC<TicketDrawerProps> = ({ isOpen, onClose }) =
                             </span>
                             <button
                               onClick={() => handleUpdateStatus(t.id, 'CLOSED')}
-                              className="text-slate-500 hover:text-slate-800 text-[10px] font-medium underline"
+                              className="text-slate-500 hover:text-slate-800 text-[10px] font-medium underline cursor-pointer"
                             >
                               Xác nhận đóng ticket
                             </button>
@@ -618,6 +656,7 @@ export const TicketDrawer: React.FC<TicketDrawerProps> = ({ isOpen, onClose }) =
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

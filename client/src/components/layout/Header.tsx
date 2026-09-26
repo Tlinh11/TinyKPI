@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Users, Bell, Grid, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.js';
 import { NotificationDropdown } from './NotificationDropdown.js';
-import { TicketDrawer } from './TicketDrawer.js';
 
 interface HeaderProps {
   isSidebarCollapsed: boolean;
@@ -21,9 +20,9 @@ export const Header: React.FC<HeaderProps> = ({
   const [showOrgDropdown, setShowOrgDropdown] = useState(false);
   const [selectedOrg, setSelectedOrg] = useState('Công ty');
   const [showAppLauncher, setShowAppLauncher] = useState(false);
-  const [isTicketDrawerOpen, setIsTicketDrawerOpen] = useState(false);
 
   const orgRef = useRef<HTMLDivElement>(null);
+
   const appLauncherRef = useRef<HTMLDivElement>(null);
 
   // Close dropdowns when clicking outside
@@ -183,22 +182,7 @@ export const Header: React.FC<HeaderProps> = ({
           {getInitials(user?.fullName)}
         </button>
       </div>
-
-      {/* Floating Ticket Button on the Right Edge with live status pulse */}
-      <div
-        onClick={() => setIsTicketDrawerOpen(true)}
-        className="fixed right-0 top-1/2 -translate-y-1/2 bg-[#1677ff] hover:bg-[#0958d9] active:bg-[#003eb3] text-white text-[11px] font-bold tracking-widest py-3 px-1.5 rounded-l-lg shadow-xl cursor-pointer select-none z-40 [writing-mode:vertical-rl] transition-all duration-200 group flex items-center justify-center gap-1.5 hover:px-2"
-        title="Gửi Ticket Hỗ Trợ & Báo Cáo Sự Cố"
-      >
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse group-hover:scale-125 transition" />
-        <span>TICKET</span>
-      </div>
-
-      {/* Ticket Support Slide-over Drawer */}
-      <TicketDrawer
-        isOpen={isTicketDrawerOpen}
-        onClose={() => setIsTicketDrawerOpen(false)}
-      />
     </header>
   );
 };
+
